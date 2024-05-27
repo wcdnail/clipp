@@ -46,6 +46,11 @@
 #include <iterator>
 #include <functional>
 
+#ifdef _MSVC_LANG
+#  define _CXX_STD _MSVC_LANG
+#else
+#  define _CXX_STD __cplusplus
+#endif
 
 /*************************************************************************//**
  *
@@ -61,13 +66,103 @@ namespace clipp {
  * basic constants and datatype definitions
  *
  *****************************************************************************/
+template<typename Char>
+struct strings;
+
+template<>
+struct strings<char>
+{
+    constexpr static auto      paramSep = " ";
+    constexpr static auto      groupSep = " ";
+    constexpr static auto   altParamSep = "|";
+    constexpr static auto   altGroupSep = " | ";
+    constexpr static auto       flagSep = ", ";
+    constexpr static auto      labelPre = "<";
+    constexpr static auto      labelPst = ">";
+    constexpr static auto     optionPre = "[";
+    constexpr static auto     optionPst = "]";
+    constexpr static auto     repeatPre = "";
+    constexpr static auto     repeatPst = "...";
+    constexpr static auto      groupPre = "(";
+    constexpr static auto      groupPst = ")";
+    constexpr static auto     alternPre = "(";
+    constexpr static auto     alternPst = ")";
+    constexpr static auto alternFlagPre = "";
+    constexpr static auto alternFlagPst = "";
+    constexpr static auto   joinablePre = "(";
+    constexpr static auto   joinablePst = ")";
+    constexpr static auto    emptyLabel = "";
+    constexpr static auto      SYNOPSIS = "SYNOPSIS";
+    constexpr static auto       OPTIONS = "OPTIONS";
+    constexpr static auto         group = "<tgroup>";
+    constexpr static auto  questionMark = "<?>";
+    constexpr static auto         arrow = " -> ";
+    constexpr static auto         spTab = " \t";
+    constexpr static auto     badRepeat = "[bad repeat ";
+    constexpr static auto        repeat = "[repeat ";
+    constexpr static auto       blocked = " [blocked]";
+    constexpr static auto      conflict = " [conflict]";
+    constexpr static auto      unmapped = " [unmapped]\n";
+    constexpr static auto  missingAfter = " [missing after ";
+    constexpr static auto        triDot = "...";
+};
+
+template<>
+struct strings<wchar_t>
+{
+    constexpr static auto      paramSep = L" ";
+    constexpr static auto      groupSep = L" ";
+    constexpr static auto   altParamSep = L"|";
+    constexpr static auto   altGroupSep = L" | ";
+    constexpr static auto       flagSep = L", ";
+    constexpr static auto      labelPre = L"<";
+    constexpr static auto      labelPst = L">";
+    constexpr static auto     optionPre = L"[";
+    constexpr static auto     optionPst = L"]";
+    constexpr static auto     repeatPre = L"";
+    constexpr static auto     repeatPst = L"...";
+    constexpr static auto      groupPre = L"(";
+    constexpr static auto      groupPst = L")";
+    constexpr static auto     alternPre = L"(";
+    constexpr static auto     alternPst = L")";
+    constexpr static auto alternFlagPre = L"";
+    constexpr static auto alternFlagPst = L"";
+    constexpr static auto   joinablePre = L"(";
+    constexpr static auto   joinablePst = L")";
+    constexpr static auto    emptyLabel = L"";
+    constexpr static auto      SYNOPSIS = L"SYNOPSIS";
+    constexpr static auto       OPTIONS = L"OPTIONS";
+    constexpr static auto         group = L"<tgroup>";
+    constexpr static auto  questionMark = L"<?>";
+    constexpr static auto         arrow = L" -> ";
+    constexpr static auto         spTab = L" \t";
+    constexpr static auto     badRepeat = L"[bad repeat ";
+    constexpr static auto        repeat = L"[repeat ";
+    constexpr static auto       blocked = L" [blocked]";
+    constexpr static auto      conflict = L" [conflict]";
+    constexpr static auto      unmapped = L" [unmapped]\n";
+    constexpr static auto  missingAfter = L" [missing after ";
+    constexpr static auto        triDot = L"...";
+};
+
 using arg_index = int;
 
 using arg_string = std::string;
 using doc_string = std::string;
+using   arg_list = std::vector<arg_string>;
 
-using arg_list  = std::vector<arg_string>;
+using arg_wstring = std::wstring;
+using doc_wstring = std::wstring;
+using   arg_wlist = std::vector<arg_wstring>;
 
+template <typename Char>
+using arg_tstring = std::basic_string<Char>;
+
+template <typename Char>
+using doc_tstring = std::basic_string<Char>;
+
+template <typename Char>
+using arg_tlist = std::vector<arg_tstring<Char>>;
 
 
 /*************************************************************************//**
@@ -134,8 +229,11 @@ private:
  * @brief match predicates
  *
  *****************************************************************************/
-using match_predicate = std::function<bool(const arg_string&)>;
-using match_function  = std::function<subrange(const arg_string&)>;
+template <typename Char>
+using match_tpredicate = std::function<bool(const arg_tstring<Char>&)>;
+
+template <typename Char>
+using match_tfunction  = std::function<subrange(const arg_tstring<Char>&)>;
 
 
 
@@ -149,6 +247,8 @@ using match_function  = std::function<subrange(const arg_string&)>;
  *
  *****************************************************************************/
 namespace traits {
+
+#if (_CXX_STD < 201703L)
 
 /*************************************************************************//**
  *
@@ -224,7 +324,7 @@ struct is_callable<Fn,void()> :
     decltype(check_is_void_callable_without_arg<Fn>(0))
 {};
 
-
+#endif // #if (_CXX_STD < 201703L)
 
 /*************************************************************************//**
  *
@@ -294,8 +394,9 @@ namespace detail {
  *        std string -> unsigned conv yields max value, but we want 0;
  *        also checks for nullptr
  *****************************************************************************/
+template <typename Char>
 inline bool
-fwd_to_unsigned_int(const char*& s)
+fwd_to_unsigned_int(const Char*& s)
 {
     if(!s) return false;
     for(; std::isspace(*s); ++s);
@@ -347,66 +448,66 @@ inline T clamped_on_limits(const V& v) {
  * @brief type conversion helpers
  *
  *****************************************************************************/
-template<class T>
+template<typename Char, class T>
 struct make {
-    static inline T from(const char* s) {
+    static inline T from(const Char* s) {
         if(!s) return false;
-        //a conversion from const char* to / must exist
+        //a conversion from const Char* to / must exist
         return static_cast<T>(s);
     }
 };
 
-template<>
-struct make<bool> {
-    static inline bool from(const char* s) {
+template<typename Char>
+struct make<Char, bool> {
+    static inline bool from(const Char* s) {
         if(!s) return false;
         return static_cast<bool>(s);
     }
 };
 
-template<>
-struct make<unsigned char> {
-    static inline unsigned char from(const char* s) {
+template<typename Char>
+struct make<Char, unsigned char> {
+    static inline unsigned char from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
         return clamped_on_limits<unsigned char>(std::strtoull(s,nullptr,10));
     }
 };
 
-template<>
-struct make<unsigned short int> {
-    static inline unsigned short int from(const char* s) {
+template<typename Char>
+struct make<Char, unsigned short int> {
+    static inline unsigned short int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
         return clamped_on_limits<unsigned short int>(std::strtoull(s,nullptr,10));
     }
 };
 
-template<>
-struct make<unsigned int> {
-    static inline unsigned int from(const char* s) {
+template<typename Char>
+struct make<Char, unsigned int> {
+    static inline unsigned int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
         return clamped_on_limits<unsigned int>(std::strtoull(s,nullptr,10));
     }
 };
 
-template<>
-struct make<unsigned long int> {
-    static inline unsigned long int from(const char* s) {
+template<typename Char>
+struct make<Char, unsigned long int> {
+    static inline unsigned long int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
         return clamped_on_limits<unsigned long int>(std::strtoull(s,nullptr,10));
     }
 };
 
-template<>
-struct make<unsigned long long int> {
-    static inline unsigned long long int from(const char* s) {
+template<typename Char>
+struct make<Char, unsigned long long int> {
+    static inline unsigned long long int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
         return clamped_on_limits<unsigned long long int>(std::strtoull(s,nullptr,10));
     }
 };
 
-template<>
-struct make<char> {
-    static inline char from(const char* s) {
+template<typename Char>
+struct make<Char, char> {
+    static inline char from(const Char* s) {
         //parse as single character?
         const auto n = std::strlen(s);
         if(n == 1) return s[0];
@@ -415,59 +516,59 @@ struct make<char> {
     }
 };
 
-template<>
-struct make<short int> {
-    static inline short int from(const char* s) {
+template<typename Char>
+struct make<Char, short int> {
+    static inline short int from(const Char* s) {
         return clamped_on_limits<short int>(std::strtoll(s,nullptr,10));
     }
 };
 
-template<>
-struct make<int> {
-    static inline int from(const char* s) {
+template<typename Char>
+struct make<Char, int> {
+    static inline int from(const Char* s) {
         return clamped_on_limits<int>(std::strtoll(s,nullptr,10));
     }
 };
 
-template<>
-struct make<long int> {
-    static inline long int from(const char* s) {
+template<typename Char>
+struct make<Char, long int> {
+    static inline long int from(const Char* s) {
         return clamped_on_limits<long int>(std::strtoll(s,nullptr,10));
     }
 };
 
-template<>
-struct make<long long int> {
-    static inline long long int from(const char* s) {
+template<typename Char>
+struct make<Char, long long int> {
+    static inline long long int from(const Char* s) {
         return (std::strtoll(s,nullptr,10));
     }
 };
 
-template<>
-struct make<float> {
-    static inline float from(const char* s) {
+template<typename Char>
+struct make<Char, float> {
+    static inline float from(const Char* s) {
         return (std::strtof(s,nullptr));
     }
 };
 
-template<>
-struct make<double> {
-    static inline double from(const char* s) {
+template<typename Char>
+struct make<Char, double> {
+    static inline double from(const Char* s) {
         return (std::strtod(s,nullptr));
     }
 };
 
-template<>
-struct make<long double> {
-    static inline long double from(const char* s) {
+template<typename Char>
+struct make<Char, long double> {
+    static inline long double from(const Char* s) {
         return (std::strtold(s,nullptr));
     }
 };
 
-template<>
-struct make<std::string> {
-    static inline std::string from(const char* s) {
-        return std::string(s);
+template<typename Char>
+struct make<Char, std::basic_string<Char>> {
+    static inline std::basic_string<Char> from(const Char* s) {
+        return std::basic_string<Char>(s);
     }
 };
 
@@ -604,8 +705,9 @@ public:
     explicit constexpr
     map_arg_to(T& target) noexcept : t_{std::addressof(target)} {}
 
-    void operator () (const char* s) const {
-        if(t_ && s) *t_ = detail::make<T>::from(s);
+    template <typename Char>
+    void operator () (const Char* s) const {
+        if(t_ && s) *t_ = detail::make<Char, T>::from(s);
     }
 
 private:
@@ -623,8 +725,9 @@ class map_arg_to<std::vector<T>>
 public:
     map_arg_to(std::vector<T>& target): t_{std::addressof(target)} {}
 
-    void operator () (const char* s) const {
-        if(t_ && s) t_->push_back(detail::make<T>::from(s));
+    template <typename Char>
+    void operator () (const Char* s) const {
+        if(t_ && s) t_->push_back(detail::make<Char, T>::from(s));
     }
 
 private:
@@ -643,7 +746,8 @@ class map_arg_to<bool>
 public:
     map_arg_to(bool& target): t_{&target} {}
 
-    void operator () (const char* s) const {
+    template <typename Char>
+    void operator () (const Char* s) const {
         if(t_ && s) *t_ = true;
     }
 
@@ -673,10 +777,10 @@ namespace str {
  * @brief converts string to value of target type 'T'
  *
  *****************************************************************************/
-template<class T>
-T make(const arg_string& s)
+template<typename Char, class T>
+T make(const arg_tstring<Char>& s)
 {
-    return detail::make<T>::from(s);
+    return detail::make<Char, T>::from(s);
 }
 
 
@@ -797,7 +901,7 @@ longest_common_prefix(const InputRange& strs)
     -> typename std::decay<decltype(*begin(strs))>::type
 {
     static_assert(traits::is_input_range<InputRange>(),
-        "parameter must satisfy the InputRange concept");
+        "tparameter must satisfy the InputRange concept");
 
     static_assert(traits::has_size_getter<
         typename std::decay<decltype(*begin(strs))>::type>(),
@@ -846,7 +950,7 @@ longest_substring_match(const std::basic_string<C,T,A>& arg,
     using string_t = std::basic_string<C,T,A>;
 
     static_assert(traits::is_input_range<InputRange>(),
-        "parameter must satisfy the InputRange concept");
+        "tparameter must satisfy the InputRange concept");
 
     static_assert(std::is_same<string_t,
         typename std::decay<decltype(*begin(substrings))>::type>(),
@@ -883,7 +987,7 @@ longest_prefix_match(const std::basic_string<C,T,A>& arg,
     using s_size_t = typename string_t::size_type;
 
     static_assert(traits::is_input_range<InputRange>(),
-        "parameter must satisfy the InputRange concept");
+        "tparameter must satisfy the InputRange concept");
 
     static_assert(std::is_same<string_t,
         typename std::decay<decltype(*begin(prefixes))>::type>(),
@@ -1063,7 +1167,7 @@ bool represents_integer(const std::basic_string<C,T,A>& candidate,
 
 /*************************************************************************//**
  *
- * @brief makes function object with a const char* parameter
+ * @brief makes function object with a const Char* parameter
  *        that assigns a value to a ref-captured object
  *
  *****************************************************************************/
@@ -1079,7 +1183,7 @@ set(T& target, V value) {
  *
  * @brief makes parameter-less function object
  *        that assigns value(s) to a ref-captured object;
- *        value(s) are obtained by converting the const char* argument to
+ *        value(s) are obtained by converting the const Char* argument to
  *        the captured object types;
  *        bools are always set to true if the argument is not nullptr
  *
@@ -1177,13 +1281,13 @@ namespace detail {
  * @brief mixin that provides action definition and execution
  *
  *****************************************************************************/
-template<class Derived>
+template<typename Char, class Derived>
 class action_provider
 {
 private:
     //---------------------------------------------------------------
     using simple_action = std::function<void()>;
-    using arg_action    = std::function<void(const char*)>;
+    using arg_action    = std::function<void(const Char*)>;
     using index_action  = std::function<void(int)>;
 
     //-----------------------------------------------------
@@ -1192,7 +1296,7 @@ private:
         simple_action_adapter() = default;
         simple_action_adapter(const simple_action& a): action_(a) {}
         simple_action_adapter(simple_action&& a): action_(std::move(a)) {}
-        void operator() (const char*) const { action_(); }
+        void operator() (const Char*) const { action_(); }
         void operator() (int) const { action_(); }
     private:
         simple_action action_;
@@ -1202,7 +1306,7 @@ private:
 public:
     //---------------------------------------------------------------
     /** @brief adds an action that has an operator() that is callable
-     *         with a 'const char*' argument */
+     *         with a 'const Char*' argument */
     Derived&
     call(arg_action a) {
         argActions_.push_back(std::move(a));
@@ -1217,7 +1321,7 @@ public:
     }
 
     /** @brief adds an action that has an operator() that is callable
-     *         with a 'const char*' argument */
+     *         with a 'const Char*' argument */
     Derived& operator () (arg_action a)    { return call(std::move(a)); }
 
     /** @brief adds an action that has an operator()() */
@@ -1226,12 +1330,12 @@ public:
 
     //---------------------------------------------------------------
     /** @brief adds an action that will set the value of 't' from
-     *         a 'const char*' arg */
+     *         a 'const Char*' arg */
     template<class Target>
     Derived&
     set(Target& t) {
         static_assert(!std::is_pointer<Target>::value,
-                      "parameter target type must not be a pointer");
+                      "tparameter target type must not be a pointer");
 
         return call(clipp::set(t));
     }
@@ -1342,7 +1446,7 @@ public:
     template<class T, class = typename std::enable_if<
             !std::is_fundamental<typename std::decay<T>::type>() &&
             (traits::is_callable<T,void()>() ||
-             traits::is_callable<T,void(const char*)>() )
+             traits::is_callable<T,void(const Char*)>() )
         >::type>
     Derived&
     target(T&& t) {
@@ -1355,7 +1459,7 @@ public:
     template<class T, class = typename std::enable_if<
             std::is_fundamental<typename std::decay<T>::type>() ||
             (!traits::is_callable<T,void()>() &&
-             !traits::is_callable<T,void(const char*)>() )
+             !traits::is_callable<T,void(const Char*)>() )
         >::type>
     Derived&
     target(T& t) {
@@ -1405,7 +1509,7 @@ public:
 
     //---------------------------------------------------------------
     /** @brief executes all argument actions */
-    void execute_actions(const arg_string& arg) const {
+    void execute_actions(const arg_tstring<Char>& arg) const {
         int i = 0;
         for(const auto& a : argActions_) {
             ++i;
@@ -1449,28 +1553,28 @@ private:
  * @brief mixin that provides basic common settings of parameters and groups
  *
  *****************************************************************************/
-template<class Derived>
+template<typename Char, class Derived>
 class token
 {
 public:
     //---------------------------------------------------------------
-    using doc_string = clipp::doc_string;
+    using toc_string = clipp::doc_tstring<Char>;
 
 
     //---------------------------------------------------------------
     /** @brief returns documentation string */
-    const doc_string& doc() const noexcept {
+    const toc_string& doc() const noexcept {
         return doc_;
     }
 
     /** @brief sets documentations string */
-    Derived& doc(const doc_string& txt) {
+    Derived& doc(const toc_string& txt) {
         doc_ = txt;
         return *static_cast<Derived*>(this);
     }
 
     /** @brief sets documentations string */
-    Derived& doc(doc_string&& txt) {
+    Derived& doc(toc_string&& txt) {
         doc_ = std::move(txt);
         return *static_cast<Derived*>(this);
     }
@@ -1504,7 +1608,7 @@ public:
 
 private:
     //---------------------------------------------------------------
-    doc_string doc_;
+    toc_string doc_;
     bool repeatable_ = false;
     bool blocking_ = false;
 };
@@ -1517,31 +1621,31 @@ private:
  * @brief sets documentation strings on a token
  *
  *****************************************************************************/
-template<class T>
+template<typename Char, class T>
 inline T&
-operator % (doc_string docstr, token<T>& p)
+operator % (doc_tstring<Char> docstr, token<Char, T>& p)
 {
     return p.doc(std::move(docstr));
 }
 //---------------------------------------------------------
-template<class T>
+template<typename Char, class T>
 inline T&&
-operator % (doc_string docstr, token<T>&& p)
+operator % (doc_tstring<Char> docstr, token<Char, T>&& p)
 {
     return std::move(p.doc(std::move(docstr)));
 }
 
 //---------------------------------------------------------
-template<class T>
+template<typename Char, class T>
 inline T&
-operator % (token<T>& p, doc_string docstr)
+operator % (token<Char, T>& p, doc_tstring<Char> docstr)
 {
     return p.doc(std::move(docstr));
 }
 //---------------------------------------------------------
-template<class T>
+template<typename Char, class T>
 inline T&&
-operator % (token<T>&& p, doc_string docstr)
+operator % (token<Char, T>&& p, doc_tstring<Char> docstr)
 {
     return std::move(p.doc(std::move(docstr)));
 }
@@ -1554,16 +1658,16 @@ operator % (token<T>&& p, doc_string docstr)
  * @brief sets documentation strings on a token
  *
  *****************************************************************************/
-template<class T>
+template<typename Char, class T>
 inline T&
-doc(doc_string docstr, token<T>& p)
+tdoc(doc_tstring<Char> docstr, token<Char, T>& p)
 {
     return p.doc(std::move(docstr));
 }
 //---------------------------------------------------------
-template<class T>
+template<typename Char, class T>
 inline T&&
-doc(doc_string docstr, token<T>&& p)
+tdoc(doc_tstring<Char> docstr, token<Char, T>&& p)
 {
     return std::move(p.doc(std::move(docstr)));
 }
@@ -1587,16 +1691,18 @@ namespace match {
  * @brief predicate that is always true
  *
  *****************************************************************************/
+template <typename Char>
 inline bool
-any(const arg_string&) { return true; }
+tany(const arg_tstring<Char>&) { return true; }
 
 /*************************************************************************//**
  *
  * @brief predicate that is always false
  *
  *****************************************************************************/
+template <typename Char>
 inline bool
-none(const arg_string&) { return false; }
+tnone(const arg_tstring<Char>&) { return false; }
 
 
 
@@ -1605,8 +1711,9 @@ none(const arg_string&) { return false; }
  * @brief predicate that returns true if the argument string is non-empty string
  *
  *****************************************************************************/
+template<typename Char>
 inline bool
-nonempty(const arg_string& s) {
+tnonempty(const arg_tstring<Char>& s) {
     return !s.empty();
 }
 
@@ -1618,8 +1725,9 @@ nonempty(const arg_string& s) {
  *        string that consists only of alphanumeric characters
  *
  *****************************************************************************/
+template<typename Char>
 inline bool
-alphanumeric(const arg_string& s) {
+talphanumeric(const arg_tstring<Char>& s) {
     if(s.empty()) return false;
     return std::all_of(s.begin(), s.end(), [](char c) {return std::isalnum(c); });
 }
@@ -1632,8 +1740,9 @@ alphanumeric(const arg_string& s) {
  *        string that consists only of alphabetic characters
  *
  *****************************************************************************/
+template<typename Char>
 inline bool
-alphabetic(const arg_string& s) {
+talphabetic(const arg_tstring<Char>& s) {
     return std::all_of(s.begin(), s.end(), [](char c) {return std::isalpha(c); });
 }
 
@@ -1645,30 +1754,31 @@ alphabetic(const arg_string& s) {
  *        equal to any string from the exclusion list
  *
  *****************************************************************************/
-class none_of
+template <typename Char>
+class tnone_of
 {
 public:
-    none_of(arg_list strs):
+    tnone_of(arg_tlist<Char> strs):
         excluded_{std::move(strs)}
     {}
 
     template<class... Strings>
-    none_of(arg_string str, Strings&&... strs):
+    tnone_of(arg_tstring<Char> str, Strings&&... strs):
         excluded_{std::move(str), std::forward<Strings>(strs)...}
     {}
 
     template<class... Strings>
-    none_of(const char* str, Strings&&... strs):
-        excluded_{arg_string(str), std::forward<Strings>(strs)...}
+    tnone_of(const Char* str, Strings&&... strs):
+        excluded_{arg_tstring<Char>(str), std::forward<Strings>(strs)...}
     {}
 
-    bool operator () (const arg_string& arg) const {
+    bool operator () (const arg_tstring<Char>& arg) const {
         return (std::find(begin(excluded_), end(excluded_), arg)
                 == end(excluded_));
     }
 
 private:
-    arg_list excluded_;
+    arg_tlist<Char> excluded_;
 };
 
 
@@ -1680,26 +1790,27 @@ private:
  *        (with at maximum one decimal point and digit separators)
  *
  *****************************************************************************/
-class numbers
+template <typename Char>
+class tnumbers
 {
 public:
     explicit
-    numbers(char decimalPoint = '.',
-            char digitSeparator = ' ',
-            char exponentSeparator = 'e')
+    tnumbers(Char decimalPoint = Char('.'),
+             Char digitSeparator = Char(' '),
+             Char exponentSeparator = Char('e'))
     :
         decpoint_{decimalPoint}, separator_{digitSeparator},
         exp_{exponentSeparator}
     {}
 
-    subrange operator () (const arg_string& s) const {
+    subrange operator () (const arg_tstring<Char>& s) const {
         return str::first_number_match(s, separator_, decpoint_, exp_);
     }
 
 private:
-    char decpoint_;
-    char separator_;
-    char exp_;
+    Char decpoint_;
+    Char separator_;
+    Char exp_;
 };
 
 
@@ -1710,17 +1821,18 @@ private:
  *        (with optional digit separators)
  *
  *****************************************************************************/
-class integers {
+template <typename Char>
+class tintegers {
 public:
     explicit
-    integers(char digitSeparator = ' '): separator_{digitSeparator} {}
+    tintegers(Char digitSeparator = Char(' ')): separator_{digitSeparator} {}
 
-    subrange operator () (const arg_string& s) const {
+    subrange operator () (const arg_tstring<Char>& s) const {
         return str::first_integer_match(s, separator_);
     }
 
 private:
-    char separator_;
+    Char separator_;
 };
 
 
@@ -1731,12 +1843,13 @@ private:
  *        a non-negative integer (with optional digit separators)
  *
  *****************************************************************************/
-class positive_integers {
+template <typename Char>
+class tpositive_integers {
 public:
     explicit
-    positive_integers(char digitSeparator = ' '): separator_{digitSeparator} {}
+    tpositive_integers(Char digitSeparator = Char(' ')): separator_{digitSeparator} {}
 
-    subrange operator () (const arg_string& s) const {
+    subrange operator () (const arg_tstring<Char>& s) const {
         auto match = str::first_integer_match(s, separator_);
         if(!match) return subrange{};
         if(s[match.at()] == '-') return subrange{};
@@ -1744,7 +1857,7 @@ public:
     }
 
 private:
-    char separator_;
+    Char separator_;
 };
 
 
@@ -1755,18 +1868,19 @@ private:
  *        contains a given substring
  *
  *****************************************************************************/
-class substring
+template <typename Char>
+class tsubstring
 {
 public:
     explicit
-    substring(arg_string str): str_{std::move(str)} {}
+    tsubstring(arg_tstring<Char> str): str_{std::move(str)} {}
 
-    subrange operator () (const arg_string& s) const {
+    subrange operator () (const arg_tstring<Char>& s) const {
         return str::substring_match(s, str_);
     }
 
 private:
-    arg_string str_;
+    arg_tstring<Char> str_;
 };
 
 
@@ -1777,17 +1891,18 @@ private:
  *        with a given prefix
  *
  *****************************************************************************/
-class prefix {
+template <typename Char>
+class tprefix {
 public:
     explicit
-    prefix(arg_string p): prefix_{std::move(p)} {}
+    tprefix(arg_tstring<Char> p): prefix_{std::move(p)} {}
 
-    bool operator () (const arg_string& s) const {
+    bool operator () (const arg_tstring<Char>& s) const {
         return s.find(prefix_) == 0;
     }
 
 private:
-    arg_string prefix_;
+    arg_tstring<Char> prefix_;
 };
 
 
@@ -1798,22 +1913,24 @@ private:
  *        with a given prefix
  *
  *****************************************************************************/
-class prefix_not {
+template <typename Char>
+class tprefix_not {
 public:
     explicit
-    prefix_not(arg_string p): prefix_{std::move(p)} {}
+    tprefix_not(arg_tstring<Char> p): prefix_{std::move(p)} {}
 
-    bool operator () (const arg_string& s) const {
+    bool operator () (const arg_tstring<Char>& s) const {
         return s.find(prefix_) != 0;
     }
 
 private:
-    arg_string prefix_;
+    arg_tstring<Char> prefix_;
 };
 
 
 /** @brief alias for prefix_not */
-using noprefix = prefix_not;
+template <typename Char>
+using  tnoprefix = tprefix_not<Char>;
 
 
 
@@ -1835,7 +1952,8 @@ public:
         min_{min}, max_{max}
     {}
 
-    bool operator () (const arg_string& s) const {
+    template <typename Char>
+    bool operator () (const arg_tstring<Char>& s) const {
         return s.size() >= min_ && s.size() <= max_;
     }
 
@@ -1879,39 +1997,40 @@ inline length max_length(std::size_t max)
  * @brief command line parameter that can match one or many arguments.
  *
  *****************************************************************************/
-class parameter :
-    public detail::token<parameter>,
-    public detail::action_provider<parameter>
+template <typename Char>
+class tparameter :
+    public detail::token<Char, tparameter<Char>>,
+    public detail::action_provider<Char, tparameter<Char>>
 {
     /** @brief adapts a 'match_predicate' to the 'match_function' interface */
     class predicate_adapter {
     public:
         explicit
-        predicate_adapter(match_predicate pred): match_{std::move(pred)} {}
+        predicate_adapter(match_tpredicate<Char> pred): match_{std::move(pred)} {}
 
-        subrange operator () (const arg_string& arg) const {
+        subrange operator () (const arg_tstring<Char>& arg) const {
             return match_(arg) ? subrange{0,arg.size()} : subrange{};
         }
 
     private:
-        match_predicate match_;
+        match_tpredicate<Char> match_;
     };
 
 public:
     //---------------------------------------------------------------
     /** @brief makes default parameter, that will match nothing */
-    parameter():
+    tparameter():
         flags_{},
-        matcher_{predicate_adapter{match::none}},
+        matcher_{predicate_adapter{match::tnone<Char>}},
         label_{}, required_{false}, greedy_{false}
     {}
 
     /** @brief makes "flag" parameter */
     template<class... Strings>
     explicit
-    parameter(arg_string str, Strings&&... strs):
+    tparameter(arg_tstring<Char> str, Strings&&... strs):
         flags_{},
-        matcher_{predicate_adapter{match::none}},
+        matcher_{predicate_adapter{match::tnone<Char>}},
         label_{}, required_{false}, greedy_{false}
     {
         add_flags(std::move(str), std::forward<Strings>(strs)...);
@@ -1919,9 +2038,9 @@ public:
 
     /** @brief makes "flag" parameter from range of strings */
     explicit
-    parameter(const arg_list& flaglist):
+    tparameter(const arg_tlist<Char>& flaglist):
         flags_{},
-        matcher_{predicate_adapter{match::none}},
+        matcher_{predicate_adapter{match::tnone<Char>}},
         label_{}, required_{false}, greedy_{false}
     {
         add_flags(flaglist);
@@ -1932,7 +2051,7 @@ public:
      *         (= yes/no matcher)
      */
     explicit
-    parameter(match_predicate filter):
+    tparameter(match_tpredicate<Char> filter):
         flags_{},
         matcher_{predicate_adapter{std::move(filter)}},
         label_{}, required_{false}, greedy_{false}
@@ -1942,7 +2061,7 @@ public:
      *         (= partial matcher)
      */
     explicit
-    parameter(match_function filter):
+    tparameter(match_tfunction<Char> filter):
         flags_{},
         matcher_{std::move(filter)},
         label_{}, required_{false}, greedy_{false}
@@ -1957,7 +2076,7 @@ public:
     }
 
     /** @brief determines if a parameter is required */
-    parameter&
+    tparameter&
     required(bool yes) noexcept {
         required_ = yes;
         return *this;
@@ -1972,7 +2091,7 @@ public:
     }
 
     /** @brief determines if a parameter should match greedily */
-    parameter&
+    tparameter&
     greedy(bool yes) noexcept {
         greedy_ = yes;
         return *this;
@@ -1983,7 +2102,7 @@ public:
     /** @brief returns parameter label;
      *         will be used for documentation, if flags are empty
      */
-    const doc_string&
+    const doc_tstring<Char>&
     label() const {
         return label_;
     }
@@ -1991,8 +2110,8 @@ public:
     /** @brief sets parameter label;
      *         will be used for documentation, if flags are empty
      */
-    parameter&
-    label(const doc_string& lbl) {
+    tparameter&
+    label(const doc_tstring<Char>& lbl) {
         label_ = lbl;
         return *this;
     }
@@ -2000,8 +2119,8 @@ public:
     /** @brief sets parameter label;
      *         will be used for documentation, if flags are empty
      */
-    parameter&
-    label(doc_string&& lbl) {
+    tparameter&
+    label(doc_tstring<Char>&& lbl) {
         label_ = lbl;
         return *this;
     }
@@ -2012,7 +2131,7 @@ public:
      *         of the flags or the result of the custom match operation
      */
     subrange
-    match(const arg_string& arg) const
+    match(const arg_tstring<Char>& arg) const
     {
         if(flags_.empty()) {
             return matcher_(arg);
@@ -2031,13 +2150,13 @@ public:
 
     //---------------------------------------------------------------
     /** @brief access range of flag strings */
-    const arg_list&
+    const arg_tlist<Char>&
     flags() const noexcept {
         return flags_;
     }
 
     /** @brief access custom match operation */
-    const match_function&
+    const match_tfunction<Char>&
     matcher() const noexcept {
         return matcher_;
     }
@@ -2045,8 +2164,8 @@ public:
 
     //---------------------------------------------------------------
     /** @brief prepend prefix to each flag */
-    inline friend parameter&
-    with_prefix(const arg_string& prefix, parameter& p)
+    inline friend tparameter&
+    with_prefix(const arg_tstring<Char>& prefix, tparameter& p)
     {
         if(prefix.empty() || p.flags().empty()) return p;
 
@@ -2059,10 +2178,10 @@ public:
 
     /** @brief prepend prefix to each flag
      */
-    inline friend parameter&
+    inline friend tparameter&
     with_prefixes_short_long(
-        const arg_string& shortpfx, const arg_string& longpfx,
-        parameter& p)
+        const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
+        tparameter& p)
     {
         if(shortpfx.empty() && longpfx.empty()) return p;
         if(p.flags().empty()) return p;
@@ -2080,8 +2199,8 @@ public:
 
     //---------------------------------------------------------------
     /** @brief prepend suffix to each flag */
-    inline friend parameter&
-    with_suffix(const arg_string& suffix, parameter& p)
+    inline friend tparameter&
+    with_suffix(const arg_tstring<Char>& suffix, tparameter& p)
     {
         if(suffix.empty() || p.flags().empty()) return p;
 
@@ -2096,10 +2215,10 @@ public:
 
     /** @brief prepend suffix to each flag
      */
-    inline friend parameter&
+    inline friend tparameter&
     with_suffixes_short_long(
-        const arg_string& shortsfx, const arg_string& longsfx,
-        parameter& p)
+        const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
+        tparameter& p)
     {
         if(shortsfx.empty() && longsfx.empty()) return p;
         if(p.flags().empty()) return p;
@@ -2120,14 +2239,14 @@ public:
 
 private:
     //---------------------------------------------------------------
-    void add_flags(arg_string str) {
+    void add_flags(arg_tstring<Char> str) {
         //empty flags are not allowed
         str::remove_ws(str);
         if(!str.empty()) flags_.push_back(std::move(str));
     }
 
     //---------------------------------------------------------------
-    void add_flags(const arg_list& strs) {
+    void add_flags(const arg_tlist<Char>& strs) {
         if(strs.empty()) return;
         flags_.reserve(flags_.size() + strs.size());
         for(const auto& s : strs) add_flags(s);
@@ -2141,9 +2260,9 @@ private:
         add_flags(std::forward<String2>(s2), std::forward<Strings>(ss)...);
     }
 
-    arg_list flags_;
-    match_function matcher_;
-    doc_string label_;
+    arg_tlist<Char> flags_;
+    match_tfunction<Char> matcher_;
+    doc_tstring<Char> label_;
     bool required_ = false;
     bool greedy_ = false;
 };
@@ -2156,11 +2275,11 @@ private:
  * @brief makes required non-blocking exact match parameter
  *
  *****************************************************************************/
-template<class String, class... Strings>
-inline parameter
-command(String&& flag, Strings&&... flags)
+template<typename Char, class String, class... Strings>
+inline tparameter<Char>
+tcommand(String&& flag, Strings&&... flags)
 {
-    return parameter{std::forward<String>(flag), std::forward<Strings>(flags)...}
+    return tparameter<Char>{std::forward<String>(flag), std::forward<Strings>(flags)...}
         .required(true).blocking(true).repeatable(false);
 }
 
@@ -2171,11 +2290,11 @@ command(String&& flag, Strings&&... flags)
  * @brief makes required non-blocking exact match parameter
  *
  *****************************************************************************/
-template<class String, class... Strings>
-inline parameter
-required(String&& flag, Strings&&... flags)
+template<typename Char, class String, class... Strings>
+inline tparameter<Char>
+trequired(String&& flag, Strings&&... flags)
 {
-    return parameter{std::forward<String>(flag), std::forward<Strings>(flags)...}
+    return tparameter<Char>{std::forward<String>(flag), std::forward<Strings>(flags)...}
         .required(true).blocking(false).repeatable(false);
 }
 
@@ -2183,18 +2302,60 @@ required(String&& flag, Strings&&... flags)
 
 /*************************************************************************//**
  *
- * @brief makes optional, non-blocking exact match parameter
+ * @brief makes optional, non-blocking exact match parameter<Char>
  *
  *****************************************************************************/
-template<class String, class... Strings>
-inline parameter
-option(String&& flag, Strings&&... flags)
+template<typename Char, class String, class... Strings>
+inline tparameter<Char>
+toption(String&& flag, Strings&&... flags)
 {
-    return parameter{std::forward<String>(flag), std::forward<Strings>(flags)...}
+    return tparameter<Char>{std::forward<String>(flag), std::forward<Strings>(flags)...}
         .required(false).blocking(false).repeatable(false);
 }
 
 
+/*************************************************************************//**
+ *
+ * @brief makes required, blocking, repeatable value parameter;
+ *        matches any non-empty string
+ *
+ *****************************************************************************/
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tvalue(const doc_tstring<Char>& label, Targets&&... tgts)
+{
+    return tparameter<Char>{match::tnonempty<Char>}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(true).blocking(true).repeatable(false);
+}
+
+template <typename Char, class Filter>
+inline constexpr bool is_str_invocable()
+{
+#if (_CXX_STD < 201703L)
+    return traits::is_callable<Filter,bool(const Char*)>::value ||
+           traits::is_callable<Filter,subrange(const Char*)>::value
+    ;
+#else
+    return std::is_invocable_r_v<bool,     Filter, const std::basic_string<Char>&>
+        || std::is_invocable_r_v<subrange, Filter, const std::basic_string<Char>&>
+    ;
+#endif // #if (_CXX_STD < 201703L)
+}
+
+template<typename Char, class Filter, class... Targets>
+inline tparameter<Char>
+tvaluef(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
+{
+    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
+    return tparameter<Char>{std::forward<Filter>(filter)}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(true).blocking(true).repeatable(false);
+}
+
+
 
 /*************************************************************************//**
  *
@@ -2202,53 +2363,22 @@ option(String&& flag, Strings&&... flags)
  *        matches any non-empty string
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-value(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tvalues(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::nonempty}
-        .label(label)
-        .target(std::forward<Targets>(tgts)...)
-        .required(true).blocking(true).repeatable(false);
-}
-
-template<class Filter, class... Targets, class = typename std::enable_if<
-    traits::is_callable<Filter,bool(const char*)>::value ||
-    traits::is_callable<Filter,subrange(const char*)>::value>::type>
-inline parameter
-value(Filter&& filter, doc_string label, Targets&&... tgts)
-{
-    return parameter{std::forward<Filter>(filter)}
-        .label(label)
-        .target(std::forward<Targets>(tgts)...)
-        .required(true).blocking(true).repeatable(false);
-}
-
-
-
-/*************************************************************************//**
- *
- * @brief makes required, blocking, repeatable value parameter;
- *        matches any non-empty string
- *
- *****************************************************************************/
-template<class... Targets>
-inline parameter
-values(const doc_string& label, Targets&&... tgts)
-{
-    return parameter{match::nonempty}
+    return tparameter<Char>{match::tnonempty<Char>}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(true);
 }
 
-template<class Filter, class... Targets, class = typename std::enable_if<
-    traits::is_callable<Filter,bool(const char*)>::value ||
-    traits::is_callable<Filter,subrange(const char*)>::value>::type>
-inline parameter
-values(Filter&& filter, doc_string label, Targets&&... tgts)
+template<typename Char, class Filter, class... Targets>
+inline tparameter<Char>
+tvaluesf(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{std::forward<Filter>(filter)}
+    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
+    return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(true);
@@ -2262,23 +2392,22 @@ values(Filter&& filter, doc_string label, Targets&&... tgts)
  *        matches any non-empty string
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_value(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_value(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::nonempty}
+    return tparameter<Char>{match::tnonempty<Char>}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(false);
 }
 
-template<class Filter, class... Targets, class = typename std::enable_if<
-    traits::is_callable<Filter,bool(const char*)>::value ||
-    traits::is_callable<Filter,subrange(const char*)>::value>::type>
-inline parameter
-opt_value(Filter&& filter, doc_string label, Targets&&... tgts)
+template<typename Char, class Filter, class... Targets>
+inline tparameter<Char>
+topt_valuef(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{std::forward<Filter>(filter)}
+    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
+    return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(false);
@@ -2292,95 +2421,22 @@ opt_value(Filter&& filter, doc_string label, Targets&&... tgts)
  *        matches any non-empty string
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_values(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_values(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::nonempty}
+    return tparameter<Char>{match::tnonempty<Char>}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(true);
 }
 
-template<class Filter, class... Targets, class = typename std::enable_if<
-    traits::is_callable<Filter,bool(const char*)>::value ||
-    traits::is_callable<Filter,subrange(const char*)>::value>::type>
-inline parameter
-opt_values(Filter&& filter, doc_string label, Targets&&... tgts)
+template<typename Char, class Filter, class... Targets>
+inline tparameter<Char>
+topt_valuesf(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{std::forward<Filter>(filter)}
-        .label(label)
-        .target(std::forward<Targets>(tgts)...)
-        .required(false).blocking(false).repeatable(true);
-}
-
-
-
-/*************************************************************************//**
- *
- * @brief makes required, blocking value parameter;
- *        matches any string consisting of alphanumeric characters
- *
- *****************************************************************************/
-template<class... Targets>
-inline parameter
-word(const doc_string& label, Targets&&... tgts)
-{
-    return parameter{match::alphanumeric}
-        .label(label)
-        .target(std::forward<Targets>(tgts)...)
-        .required(true).blocking(true).repeatable(false);
-}
-
-
-
-/*************************************************************************//**
- *
- * @brief makes required, blocking, repeatable value parameter;
- *        matches any string consisting of alphanumeric characters
- *
- *****************************************************************************/
-template<class... Targets>
-inline parameter
-words(const doc_string& label, Targets&&... tgts)
-{
-    return parameter{match::alphanumeric}
-        .label(label)
-        .target(std::forward<Targets>(tgts)...)
-        .required(true).blocking(true).repeatable(true);
-}
-
-
-
-/*************************************************************************//**
- *
- * @brief makes optional, blocking value parameter;
- *        matches any string consisting of alphanumeric characters
- *
- *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_word(const doc_string& label, Targets&&... tgts)
-{
-    return parameter{match::alphanumeric}
-        .label(label)
-        .target(std::forward<Targets>(tgts)...)
-        .required(false).blocking(false).repeatable(false);
-}
-
-
-
-/*************************************************************************//**
- *
- * @brief makes optional, blocking, repeatable value parameter;
- *        matches any string consisting of alphanumeric characters
- *
- *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_words(const doc_string& label, Targets&&... tgts)
-{
-    return parameter{match::alphanumeric}
+    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
+    return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(true);
@@ -2391,14 +2447,86 @@ opt_words(const doc_string& label, Targets&&... tgts)
 /*************************************************************************//**
  *
  * @brief makes required, blocking value parameter;
+ *        matches any string consisting of alphanumeric characters
+ *
+ *****************************************************************************/
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tword(const doc_tstring<Char>& label, Targets&&... tgts)
+{
+    return tparameter<Char>{match::talphanumeric<Char>}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(true).blocking(true).repeatable(false);
+}
+
+
+
+/*************************************************************************//**
+ *
+ * @brief makes required, blocking, repeatable value parameter;
+ *        matches any string consisting of alphanumeric characters
+ *
+ *****************************************************************************/
+template<typename Char, class... Targets>
+inline tparameter<Char>
+twords(const doc_tstring<Char>& label, Targets&&... tgts)
+{
+    return tparameter<Char>{match::talphanumeric<Char>}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(true).blocking(true).repeatable(true);
+}
+
+
+
+/*************************************************************************//**
+ *
+ * @brief makes optional, blocking value parameter;
+ *        matches any string consisting of alphanumeric characters
+ *
+ *****************************************************************************/
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_word(const doc_tstring<Char>& label, Targets&&... tgts)
+{
+    return tparameter<Char>{match::talphanumeric<Char>}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(false).blocking(false).repeatable(false);
+}
+
+
+
+/*************************************************************************//**
+ *
+ * @brief makes optional, blocking, repeatable value parameter;
+ *        matches any string consisting of alphanumeric characters
+ *
+ *****************************************************************************/
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_words(const doc_tstring<Char>& label, Targets&&... tgts)
+{
+    return tparameter<Char>{match::talphanumeric<Char>}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(false).blocking(false).repeatable(true);
+}
+
+
+
+/*************************************************************************//**
+ *
+ * @brief makes required, blocking value parameter;
  *        matches any string that represents a number
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-number(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tnumber(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::numbers{}}
+    return tparameter<Char>{match::tnumbers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(false);
@@ -2412,11 +2540,11 @@ number(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents a number
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-numbers(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tnumbers(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::numbers{}}
+    return tparameter<Char>{match::tnumbers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(true);
@@ -2430,11 +2558,11 @@ numbers(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents a number
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_number(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_number(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::numbers{}}
+    return tparameter<Char>{match::tnumbers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(false);
@@ -2448,11 +2576,11 @@ opt_number(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents a number
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_numbers(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_numbers(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::numbers{}}
+    return tparameter<Char>{match::tnumbers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(true);
@@ -2466,11 +2594,11 @@ opt_numbers(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents an integer
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-integer(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tinteger(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::integers{}}
+    return tparameter<Char>{match::tintegers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(false);
@@ -2484,11 +2612,11 @@ integer(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents an integer
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-integers(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tintegers(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::integers{}}
+    return tparameter<Char>{match::tintegers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(true);
@@ -2502,11 +2630,11 @@ integers(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents an integer
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_integer(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_integer(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::integers{}}
+    return tparameter<Char>{match::tintegers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(false);
@@ -2520,11 +2648,11 @@ opt_integer(const doc_string& label, Targets&&... tgts)
  *        matches any string that represents an integer
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-opt_integers(const doc_string& label, Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+topt_integers(const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    return parameter{match::integers{}}
+    return tparameter<Char>{match::tintegers<Char>{}}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(true);
@@ -2537,11 +2665,11 @@ opt_integers(const doc_string& label, Targets&&... tgts)
  * @brief makes catch-all value parameter
  *
  *****************************************************************************/
-template<class... Targets>
-inline parameter
-any_other(Targets&&... tgts)
+template<typename Char, class... Targets>
+inline tparameter<Char>
+tany_other(Targets&&... tgts)
 {
-    return parameter{match::any}
+    return tparameter<Char>{match::tany<Char>}
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(true);
 }
@@ -2553,13 +2681,11 @@ any_other(Targets&&... tgts)
  * @brief makes catch-all value parameter with custom filter
  *
  *****************************************************************************/
-template<class Filter, class... Targets, class = typename std::enable_if<
-    traits::is_callable<Filter,bool(const char*)>::value ||
-    traits::is_callable<Filter,subrange(const char*)>::value>::type>
-inline parameter
-any(Filter&& filter, Targets&&... tgts)
+template<typename Char, class Filter, class... Targets, typename Enabled = IsStrCallable<Char, Filter>>
+inline tparameter<Char>
+tany(Filter&& filter, Targets&&... tgts)
 {
-    return parameter{std::forward<Filter>(filter)}
+    return tparameter<Char>{std::forward<Filter>(filter)}
         .target(std::forward<Targets>(tgts)...)
         .required(false).blocking(false).repeatable(true);
 }
@@ -2573,8 +2699,9 @@ any(Filter&& filter, Targets&&... tgts)
  *        can be configured to act as a group of alternatives (exclusive match)
  *
  *****************************************************************************/
-class group :
-    public detail::token<group>
+template<typename Char>
+class tgroup :
+    public detail::token<Char, tgroup<Char>>
 {
     //---------------------------------------------------------------
     /**
@@ -2642,7 +2769,7 @@ class group :
             destroy_content();
         }
 
-        const doc_string&
+        const doc_tstring<Char>&
         doc() const noexcept {
             switch(type_) {
                 default:
@@ -2696,7 +2823,7 @@ class group :
             }
         }
 
-        void execute_actions(const arg_string& arg) const {
+        void execute_actions(const arg_tstring<Char>& arg) const {
             switch(type_) {
                 default:
                 case type::group: return;
@@ -2773,16 +2900,16 @@ class group :
 
 public:
     //---------------------------------------------------------------
-    using child      = child_t<parameter,group>;
+    using child      = child_t<tparameter<Char>, tgroup<Char>>;
     using value_type = child;
 
 private:
     using children_store = std::vector<child>;
 
 public:
-    using const_iterator = children_store::const_iterator;
-    using iterator       = children_store::iterator;
-    using size_type      = children_store::size_type;
+    using const_iterator = typename children_store::const_iterator;
+    using iterator       = typename children_store::iterator;
+    using size_type      = typename children_store::size_type;
 
 
     //---------------------------------------------------------------
@@ -2795,10 +2922,10 @@ public:
         //-----------------------------------------------------
         struct context {
             context() = default;
-            context(const group& p):
+            context(const tgroup& p):
                 parent{&p}, cur{p.begin()}, end{p.end()}
             {}
-            const group* parent = nullptr;
+            const tgroup* parent = nullptr;
             const_iterator cur;
             const_iterator end;
         };
@@ -2817,7 +2944,7 @@ public:
         depth_first_traverser() = default;
 
         explicit
-        depth_first_traverser(const group& cur): stack_{} {
+        depth_first_traverser(const tgroup& cur): stack_{} {
             if(!cur.empty()) stack_.emplace_back(cur);
         }
 
@@ -2845,7 +2972,7 @@ public:
                 if(t.cur+1 != t.end) return false;
             }
             const auto& top = stack_.back();
-            //if we have to descend into group on next ++ => not last in path
+            //if we have to descend into tgroup on next ++ => not last in path
             if(top.cur->is_group()) return false;
             return true;
         }
@@ -2870,7 +2997,7 @@ public:
         }
 
         /** @brief inside a particular group */
-        bool is_inside(const group* g) const noexcept {
+        bool is_inside(const tgroup* g) const noexcept {
             if(!g) return false;
             return std::any_of(stack_.begin(), stack_.end(),
                 [g](const context& c) { return c.parent == g; });
@@ -2889,7 +3016,7 @@ public:
         }
 
         /** @brief innermost repeat group */
-        const group*
+        const tgroup*
         innermost_repeat_group() const noexcept {
             auto i = std::find_if(stack_.rbegin(), stack_.rend(),
                 [](const context& c) { return c.parent->repeatable(); });
@@ -2897,7 +3024,7 @@ public:
         }
 
         /** @brief innermost exclusive (alternatives) group */
-        const group*
+        const tgroup*
         innermost_exclusive_group() const noexcept {
             auto i = std::find_if(stack_.rbegin(), stack_.rend(),
                 [](const context& c) { return c.parent->exclusive(); });
@@ -2905,7 +3032,7 @@ public:
         }
 
         /** @brief innermost blocking group */
-        const group*
+        const tgroup*
         innermost_blocking_group() const noexcept {
             auto i = std::find_if(stack_.rbegin(), stack_.rend(),
                 [](const context& c) { return c.parent->blocking(); });
@@ -2913,11 +3040,11 @@ public:
         }
 
         /** @brief returns the outermost group that will be left on next ++*/
-        const group*
+        const tgroup*
         outermost_blocking_group_fully_explored() const noexcept {
             if(stack_.empty()) return nullptr;
 
-            const group* g = nullptr;
+            const tgroup* g = nullptr;
             for(auto i = stack_.rbegin(); i != stack_.rend(); ++i) {
                 if(i->cur+1 == i->end) {
                     if(i->parent->blocking()) g = i->parent;
@@ -2929,22 +3056,22 @@ public:
         }
 
         /** @brief outermost join group */
-        const group*
+        const tgroup*
         outermost_join_group() const noexcept {
             auto i = std::find_if(stack_.begin(), stack_.end(),
                 [](const context& c) { return c.parent->joinable(); });
             return i != stack_.end() ? i->parent : nullptr;
         }
 
-        const group* root() const noexcept {
+        const tgroup* root() const noexcept {
             return stack_.empty() ? nullptr : stack_.front().parent;
         }
 
         /** @brief common flag prefix of all flags in current group */
-        arg_string common_flag_prefix() const noexcept {
+        arg_tstring<Char> common_flag_prefix() const noexcept {
             if(stack_.empty()) return "";
             auto g = outermost_join_group();
-            return g ? g->common_flag_prefix() : arg_string("");
+            return g ? g->common_flag_prefix() : arg_tstring<Char>("");
         }
 
         const child&
@@ -2957,7 +3084,7 @@ public:
             return &(*stack_.back().cur);
         }
 
-        const group&
+        const tgroup&
         parent() const noexcept {
             return *(stack_.back().parent);
         }
@@ -2967,7 +3094,7 @@ public:
         depth_first_traverser&
         operator ++ () {
             if(stack_.empty()) return *this;
-            //at group -> decend into group
+            //at tgroup -> decend into tgroup
             if(stack_.back().cur->is_group()) {
                 stack_.emplace_back(stack_.back().cur->as_group());
             }
@@ -2982,7 +3109,7 @@ public:
         next_sibling() {
             if(stack_.empty()) return *this;
             ++stack_.back().cur;
-            //at the end of current group?
+            //at the end of current tgroup?
             while(stack_.back().cur == stack_.back().end) {
                 //go to parent
                 stack_.pop_back();
@@ -3006,7 +3133,7 @@ public:
          * @brief
          */
         depth_first_traverser&
-        back_to_ancestor(const group* g) {
+        back_to_ancestor(const tgroup* g) {
             if(!g) return *this;
             while(!stack_.empty()) {
                 const auto& top = stack_.back().cur;
@@ -3097,11 +3224,11 @@ public:
 
 
     //---------------------------------------------------------------
-    group() = default;
+    tgroup() = default;
 
     template<class Param, class... Params>
     explicit
-    group(doc_string docstr, Param param, Params... params):
+    tgroup(doc_tstring<Char> docstr, Param param, Params... params):
         children_{}, exclusive_{false}, joinable_{false}, scoped_{true}
     {
         doc(std::move(docstr));
@@ -3110,7 +3237,7 @@ public:
 
     template<class... Params>
     explicit
-    group(parameter param, Params... params):
+    tgroup(tparameter<Char> param, Params... params):
         children_{}, exclusive_{false}, joinable_{false}, scoped_{true}
     {
         push_back(std::move(param), std::move(params)...);
@@ -3118,7 +3245,7 @@ public:
 
     template<class P2, class... Ps>
     explicit
-    group(group p1, P2 p2, Ps... ps):
+    tgroup(tgroup p1, P2 p2, Ps... ps):
         children_{}, exclusive_{false}, joinable_{false}, scoped_{true}
     {
         push_back(std::move(p1), std::move(p2), std::move(ps)...);
@@ -3126,20 +3253,20 @@ public:
 
 
     //-----------------------------------------------------
-    group(const group&) = default;
-    group(group&&) = default;
+    tgroup(const tgroup&) = default;
+    tgroup(tgroup&&) = default;
 
 
     //---------------------------------------------------------------
-    group& operator = (const group&) = default;
-    group& operator = (group&&) = default;
+    tgroup& operator = (const tgroup&) = default;
+    tgroup& operator = (tgroup&&) = default;
 
 
     //---------------------------------------------------------------
     /** @brief determines if a command line argument can be matched by a
      *         combination of (partial) matches through any number of children
      */
-    group& joinable(bool yes) {
+    tgroup& joinable(bool yes) {
         joinable_ = yes;
         return *this;
     }
@@ -3157,7 +3284,7 @@ public:
      *         operators , & | and other combinating functions will
      *         not merge groups that are marked as scoped
      */
-    group& scoped(bool yes) {
+    tgroup& scoped(bool yes) {
         scoped_ = yes;
         return *this;
     }
@@ -3173,7 +3300,7 @@ public:
 
     //---------------------------------------------------------------
     /** @brief determines if children are mutually exclusive alternatives */
-    group& exclusive(bool yes) {
+    tgroup& exclusive(bool yes) {
         exclusive_ = yes;
         return *this;
     }
@@ -3212,12 +3339,12 @@ public:
     //---------------------------------------------------------------
     /** @brief returns if the entire group is blocking / positional */
     bool blocking() const noexcept {
-        return token<group>::blocking() || (exclusive() && all_blocking());
+        return detail::token<Char, tgroup>::blocking() || (exclusive() && all_blocking());
     }
     //-----------------------------------------------------
     /** @brief determines if the entire group is blocking / positional */
-    group& blocking(bool yes) {
-        return token<group>::blocking(yes);
+    tgroup& blocking(bool yes) {
+        return detail::token<Char, tgroup>::blocking(yes);
     }
 
     //---------------------------------------------------------------
@@ -3257,29 +3384,29 @@ public:
 
     //---------------------------------------------------------------
     /** @brief adds child parameter at the end */
-    group&
-    push_back(const parameter& v) {
+    tgroup&
+    push_back(const tparameter<Char>& v) {
         children_.emplace_back(v);
         return *this;
     }
     //-----------------------------------------------------
-    /** @brief adds child parameter at the end */
-    group&
-    push_back(parameter&& v) {
+    /** @brief adds child parameter<Char> at the end */
+    tgroup&
+    push_back(tparameter<Char>&& v) {
         children_.emplace_back(std::move(v));
         return *this;
     }
     //-----------------------------------------------------
     /** @brief adds child group at the end */
-    group&
-    push_back(const group& g) {
+    tgroup&
+    push_back(const tgroup& g) {
         children_.emplace_back(g);
         return *this;
     }
     //-----------------------------------------------------
     /** @brief adds child group at the end */
-    group&
-    push_back(group&& g) {
+    tgroup&
+    push_back(tgroup&& g) {
         children_.emplace_back(std::move(g));
         return *this;
     }
@@ -3288,7 +3415,7 @@ public:
     //-----------------------------------------------------
     /** @brief adds children (groups and/or parameters) */
     template<class Param1, class Param2, class... Params>
-    group&
+    tgroup&
     push_back(Param1&& param1, Param2&& param2, Params&&... params)
     {
         children_.reserve(children_.size() + 2 + sizeof...(params));
@@ -3299,30 +3426,30 @@ public:
 
 
     //---------------------------------------------------------------
-    /** @brief adds child parameter at the beginning */
-    group&
-    push_front(const parameter& v) {
+    /** @brief adds child parameter<Char> at the beginning */
+    tgroup&
+    push_front(const tparameter<Char>& v) {
         children_.emplace(children_.begin(), v);
         return *this;
     }
     //-----------------------------------------------------
-    /** @brief adds child parameter at the beginning */
-    group&
-    push_front(parameter&& v) {
+    /** @brief adds child parameter<Char> at the beginning */
+    tgroup&
+    push_front(tparameter<Char>&& v) {
         children_.emplace(children_.begin(), std::move(v));
         return *this;
     }
     //-----------------------------------------------------
     /** @brief adds child group at the beginning */
-    group&
-    push_front(const group& g) {
+    tgroup&
+    push_front(const tgroup& g) {
         children_.emplace(children_.begin(), g);
         return *this;
     }
     //-----------------------------------------------------
     /** @brief adds child group at the beginning */
-    group&
-    push_front(group&& g) {
+    tgroup&
+    push_front(tgroup&& g) {
         children_.emplace(children_.begin(), std::move(g));
         return *this;
     }
@@ -3330,8 +3457,8 @@ public:
 
     //---------------------------------------------------------------
     /** @brief adds all children of other group at the end */
-    group&
-    merge(group&& g)
+    tgroup&
+    merge(tgroup&& g)
     {
         children_.insert(children_.end(),
                       std::make_move_iterator(g.begin()),
@@ -3341,8 +3468,8 @@ public:
     //-----------------------------------------------------
     /** @brief adds all children of several other groups at the end */
     template<class... Groups>
-    group&
-    merge(group&& g1, group&& g2, Groups&&... gs)
+    tgroup&
+    merge(tgroup&& g1, tgroup&& g2, Groups&&... gs)
     {
         merge(std::move(g1));
         merge(std::move(g2), std::forward<Groups>(gs)...);
@@ -3417,7 +3544,7 @@ public:
 
 
     //---------------------------------------------------------------
-    /** @brief returns recursive parameter count */
+    /** @brief returns recursive parameter<Char> count */
     size_type param_count() const {
         size_type c = 0;
         for(const auto& n : children_) {
@@ -3429,9 +3556,9 @@ public:
 
     //---------------------------------------------------------------
     /** @brief returns range of all flags (recursive) */
-    arg_list all_flags() const
+    arg_tlist<Char> all_flags() const
     {
-        std::vector<arg_string> all;
+        std::vector<arg_tstring<Char>> all;
         gather_flags(children_, all);
         return all;
     }
@@ -3460,9 +3587,9 @@ public:
 
     //---------------------------------------------------------------
     /** @brief returns longest common prefix of all flags */
-    arg_string common_flag_prefix() const
+    arg_tstring<Char> common_flag_prefix() const
     {
-        arg_list prefixes;
+        arg_tlist<Char> prefixes;
         gather_prefixes(children_, prefixes);
         return str::longest_common_prefix(prefixes);
     }
@@ -3471,7 +3598,7 @@ public:
 private:
     //---------------------------------------------------------------
     static void
-    gather_flags(const children_store& nodes, arg_list& all)
+    gather_flags(const children_store& nodes, arg_tlist<Char>& all)
     {
         for(const auto& p : nodes) {
             if(p.is_group()) {
@@ -3487,7 +3614,7 @@ private:
     }
     //---------------------------------------------------------------
     static void
-    gather_prefixes(const children_store& nodes, arg_list& all)
+    gather_prefixes(const children_store& nodes, arg_tlist<Char>& all)
     {
         for(const auto& p : nodes) {
             if(p.is_group()) {
@@ -3514,7 +3641,8 @@ private:
  * @brief group or parameter
  *
  *****************************************************************************/
-using pattern = group::child;
+template <typename Char>
+using tpattern = typename tgroup<Char>::child;
 
 
 
@@ -3523,8 +3651,8 @@ using pattern = group::child;
  * @brief apply an action to all parameters in a group
  *
  *****************************************************************************/
-template<class Action>
-void for_all_params(group& g, Action&& action)
+template<typename Char, class Action>
+void for_all_params(tgroup<Char>& g, Action&& action)
 {
     for(auto& p : g) {
         if(p.is_group()) {
@@ -3536,8 +3664,8 @@ void for_all_params(group& g, Action&& action)
     }
 }
 
-template<class Action>
-void for_all_params(const group& g, Action&& action)
+template<typename Char, class Action>
+void for_all_params(const tgroup<Char>& g, Action&& action)
 {
     for(auto& p : g) {
         if(p.is_group()) {
@@ -3556,40 +3684,44 @@ void for_all_params(const group& g, Action&& action)
  * @brief makes a group of parameters and/or groups
  *
  *****************************************************************************/
-inline group
-operator , (parameter a, parameter b)
+template<typename Char>
+inline tgroup<Char>
+operator , (tparameter<Char> a, tparameter<Char> b)
 {
-    return group{std::move(a), std::move(b)}.scoped(false);
+    return tgroup<Char>{std::move(a), std::move(b)}.scoped(false);
 }
 
 //---------------------------------------------------------
-inline group
-operator , (parameter a, group b)
+template<typename Char>
+inline tgroup<Char>
+operator , (tparameter<Char> a, tgroup<Char> b)
 {
     return !b.scoped() && !b.blocking() && !b.exclusive() && !b.repeatable()
         && !b.joinable() && (b.doc().empty() || b.doc() == a.doc())
        ? b.push_front(std::move(a))
-       : group{std::move(a), std::move(b)}.scoped(false);
+       : tgroup<Char>{std::move(a), std::move(b)}.scoped(false);
 }
 
 //---------------------------------------------------------
-inline group
-operator , (group a, parameter b)
+template<typename Char>
+inline tgroup<Char>
+operator , (tgroup<Char> a, tparameter<Char> b)
 {
     return !a.scoped() && !a.blocking() && !a.exclusive() && !a.repeatable()
         && !a.joinable() && (a.doc().empty() || a.doc() == b.doc())
        ? a.push_back(std::move(b))
-       : group{std::move(a), std::move(b)}.scoped(false);
+       : tgroup<Char>{std::move(a), std::move(b)}.scoped(false);
 }
 
 //---------------------------------------------------------
-inline group
-operator , (group a, group b)
+template<typename Char>
+inline tgroup<Char>
+operator , (tgroup<Char> a, tgroup<Char> b)
 {
     return !a.scoped() && !a.blocking() && !a.exclusive() && !a.repeatable()
         && !a.joinable() && (a.doc().empty() || a.doc() == b.doc())
        ? a.push_back(std::move(b))
-       : group{std::move(a), std::move(b)}.scoped(false);
+       : tgroup<Char>{std::move(a), std::move(b)}.scoped(false);
 }
 
 
@@ -3599,11 +3731,11 @@ operator , (group a, group b)
  * @brief makes a group of alternative parameters or groups
  *
  *****************************************************************************/
-template<class Param, class... Params>
-inline group
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
 one_of(Param param, Params... params)
 {
-    return group{std::move(param), std::move(params)...}.exclusive(true);
+    return tgroup<Char>{std::move(param), std::move(params)...}.exclusive(true);
 }
 
 
@@ -3612,42 +3744,46 @@ one_of(Param param, Params... params)
  * @brief makes a group of alternative parameters or groups
  *
  *****************************************************************************/
-inline group
-operator | (parameter a, parameter b)
+template<typename Char>
+inline tgroup<Char>
+operator | (tparameter<Char> a, tparameter<Char> b)
 {
-    return group{std::move(a), std::move(b)}.scoped(false).exclusive(true);
+    return tgroup<Char>{std::move(a), std::move(b)}.scoped(false).exclusive(true);
 }
 
 //-------------------------------------------------------------------
-inline group
-operator | (parameter a, group b)
+template<typename Char>
+inline tgroup<Char>
+operator | (tparameter<Char> a, tgroup<Char> b)
 {
     return !b.scoped() && !b.blocking() && b.exclusive() && !b.repeatable()
         && !b.joinable()
         && (b.doc().empty() || b.doc() == a.doc())
         ? b.push_front(std::move(a))
-        : group{std::move(a), std::move(b)}.scoped(false).exclusive(true);
+        : tgroup<Char>{std::move(a), std::move(b)}.scoped(false).exclusive(true);
 }
 
 //-------------------------------------------------------------------
-inline group
-operator | (group a, parameter b)
+template<typename Char>
+inline tgroup<Char>
+operator | (tgroup<Char> a, tparameter<Char> b)
 {
     return !a.scoped() && a.exclusive() && !a.repeatable() && !a.joinable()
         && a.blocking() == b.blocking()
         && (a.doc().empty() || a.doc() == b.doc())
         ? a.push_back(std::move(b))
-        : group{std::move(a), std::move(b)}.scoped(false).exclusive(true);
+        : tgroup<Char>{std::move(a), std::move(b)}.scoped(false).exclusive(true);
 }
 
-inline group
-operator | (group a, group b)
+template<typename Char>
+inline tgroup<Char>
+operator | (tgroup<Char> a, tgroup<Char> b)
 {
     return !a.scoped() && a.exclusive() &&!a.repeatable() && !a.joinable()
         && a.blocking() == b.blocking()
         && (a.doc().empty() || a.doc() == b.doc())
         ? a.push_back(std::move(b))
-        : group{std::move(a), std::move(b)}.scoped(false).exclusive(true);
+        : tgroup<Char>{std::move(a), std::move(b)}.scoped(false).exclusive(true);
 }
 
 
@@ -3673,42 +3809,45 @@ void set_blocking(bool yes, P& p, Ps&... ps) {
 
 /*************************************************************************//**
  *
- * @brief makes a parameter/group sequence by making all input objects blocking
+ * @brief makes a parameter/group<Char> sequence by making all input objects blocking
  *
  *****************************************************************************/
-template<class Param, class... Params>
-inline group
-in_sequence(Param param, Params... params)
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
+tin_sequence(Param param, Params... params)
 {
     detail::set_blocking(true, param, params...);
-    return group{std::move(param), std::move(params)...}.scoped(true);
+    return tgroup<Char>{std::move(param), std::move(params)...}.scoped(true);
 }
 
 
 /*************************************************************************//**
  *
- * @brief makes a parameter/group sequence by making all input objects blocking
+ * @brief makes a parameter/group<Char> sequence by making all input objects blocking
  *
  *****************************************************************************/
-inline group
-operator & (parameter a, parameter b)
+template<typename Char>
+inline tgroup<Char>
+operator & (tparameter<Char> a, tparameter<Char> b)
 {
     a.blocking(true);
     b.blocking(true);
-    return group{std::move(a), std::move(b)}.scoped(true);
+    return tgroup<Char>{std::move(a), std::move(b)}.scoped(true);
 }
 
 //---------------------------------------------------------
-inline group
-operator & (parameter a, group b)
+template<typename Char>
+inline tgroup<Char>
+operator & (tparameter<Char> a, tgroup<Char> b)
 {
     a.blocking(true);
-    return group{std::move(a), std::move(b)}.scoped(true);
+    return tgroup<Char>{std::move(a), std::move(b)}.scoped(true);
 }
 
 //---------------------------------------------------------
-inline group
-operator & (group a, parameter b)
+template<typename Char>
+inline tgroup<Char>
+operator & (tgroup<Char> a, tparameter<Char> b)
 {
     b.blocking(true);
     if(a.all_blocking() && !a.exclusive() && !a.repeatable() && !a.joinable()
@@ -3718,12 +3857,13 @@ operator & (group a, parameter b)
     }
     else {
         if(!a.all_blocking()) a.blocking(true);
-        return group{std::move(a), std::move(b)}.scoped(true);
+        return tgroup<Char>{std::move(a), std::move(b)}.scoped(true);
     }
 }
 
-inline group
-operator & (group a, group b)
+template<typename Char>
+inline tgroup<Char>
+operator & (tgroup<Char> a, tgroup<Char> b)
 {
     if(!b.all_blocking()) b.blocking(true);
     if(a.all_blocking() && !a.exclusive() && !a.repeatable()
@@ -3733,7 +3873,7 @@ operator & (group a, group b)
     }
     else {
         if(!a.all_blocking()) a.blocking(true);
-        return group{std::move(a), std::move(b)}.scoped(true);
+        return tgroup<Char>{std::move(a), std::move(b)}.scoped(true);
     }
 }
 
@@ -3745,31 +3885,32 @@ operator & (group a, group b)
  *        where all single char flag params ("-a", "b", ...) are joinable
  *
  *****************************************************************************/
-inline group
-joinable(group g) {
+template<typename Char>
+inline tgroup<Char>
+tjoinable(tgroup<Char> g) {
     return g.joinable(true);
 }
 
 //-------------------------------------------------------------------
-template<class... Params>
-inline group
-joinable(parameter param, Params... params)
+template<typename Char, class... Params>
+inline tgroup<Char>
+tjoinable(tparameter<Char> param, Params... params)
 {
-    return group{std::move(param), std::move(params)...}.joinable(true);
+    return tgroup<Char>{std::move(param), std::move(params)...}.joinable(true);
 }
 
-template<class P2, class... Ps>
-inline group
-joinable(group p1, P2 p2, Ps... ps)
+template<typename Char, class P2, class... Ps>
+inline tgroup<Char>
+tjoinable(tgroup<Char> p1, P2 p2, Ps... ps)
 {
-    return group{std::move(p1), std::move(p2), std::move(ps)...}.joinable(true);
+    return tgroup<Char>{std::move(p1), std::move(p2), std::move(ps)...}.joinable(true);
 }
 
-template<class Param, class... Params>
-inline group
-joinable(doc_string docstr, Param param, Params... params)
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
+tjoinable(doc_tstring<Char> docstr, Param param, Params... params)
 {
-    return group{std::move(param), std::move(params)...}
+    return tgroup<Char>{std::move(param), std::move(params)...}
                 .joinable(true).doc(std::move(docstr));
 }
 
@@ -3780,8 +3921,9 @@ joinable(doc_string docstr, Param param, Params... params)
  * @brief makes a repeatable copy of a parameter
  *
  *****************************************************************************/
-inline parameter
-repeatable(parameter p) {
+template<typename Char>
+inline tparameter<Char>
+trepeatable(tparameter<Char> p) {
     return p.repeatable(true);
 }
 
@@ -3790,8 +3932,9 @@ repeatable(parameter p) {
  * @brief makes a repeatable copy of a group
  *
  *****************************************************************************/
-inline group
-repeatable(group g) {
+template<typename Char>
+inline tgroup<Char>
+trepeatable(tgroup<Char> g) {
     return g.repeatable(true);
 }
 
@@ -3801,24 +3944,24 @@ repeatable(group g) {
  *
  * @brief makes a group of parameters and/or groups
  *        that is repeatable as a whole
- *        Note that a repeatable group consisting entirely of non-blocking
- *        children is equivalent to a non-repeatable group of
+ *        Note that a repeatable group<Char> consisting entirely of non-blocking
+ *        children is equivalent to a non-repeatable group<Char> of
  *        repeatable children.
  *
  *****************************************************************************/
-template<class P2, class... Ps>
-inline group
-repeatable(parameter p1, P2 p2, Ps... ps)
+template<typename Char, class P2, class... Ps>
+inline tgroup<Char>
+trepeatable(tparameter<Char> p1, P2 p2, Ps... ps)
 {
-    return group{std::move(p1), std::move(p2),
+    return tgroup<Char>{std::move(p1), std::move(p2),
                  std::move(ps)...}.repeatable(true);
 }
 
-template<class P2, class... Ps>
-inline group
-repeatable(group p1, P2 p2, Ps... ps)
+template<typename Char, class P2, class... Ps>
+inline tgroup<Char>
+trepeatable(tgroup<Char> p1, P2 p2, Ps... ps)
 {
-    return group{std::move(p1), std::move(p2),
+    return tgroup<Char>{std::move(p1), std::move(p2),
                  std::move(ps)...}.repeatable(true);
 }
 
@@ -3829,14 +3972,16 @@ repeatable(group p1, P2 p2, Ps... ps)
  * @brief makes a parameter greedy (match with top priority)
  *
  *****************************************************************************/
-inline parameter
-greedy(parameter p) {
+template<typename Char>
+inline tparameter<Char>
+tgreedy(tparameter<Char> p) {
     return p.greedy(true);
 }
 
-inline parameter
-operator ! (parameter p) {
-    return greedy(p);
+template<typename Char>
+inline tparameter<Char>
+operator ! (tparameter<Char> p) {
+    return tgreedy<Char>(p);
 }
 
 
@@ -3846,40 +3991,43 @@ operator ! (parameter p) {
  * @brief recursively prepends a prefix to all flags
  *
  *****************************************************************************/
-inline parameter&&
-with_prefix(const arg_string& prefix, parameter&& p) {
-    return std::move(with_prefix(prefix, p));
+template<typename Char>
+inline tparameter<Char>&&
+twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>&& p) {
+    return std::move(twith_prefix<Char>(prefix, std::forward<tparameter<Char>>(p)));
 }
 
 
 //-------------------------------------------------------------------
-inline group&
-with_prefix(const arg_string& prefix, group& g)
+template<typename Char>
+inline tgroup<Char>&
+twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            with_prefix(prefix, p.as_group());
+            twith_prefix<Char>(prefix, p.as_group());
         } else {
-            with_prefix(prefix, p.as_param());
+            twith_prefix<Char>(prefix, p.as_param());
         }
     }
     return g;
 }
 
 
-inline group&&
-with_prefix(const arg_string& prefix, group&& params)
+template<typename Char>
+inline tgroup<Char>&&
+twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>&& params)
 {
-    return std::move(with_prefix(prefix, params));
+    return std::move(twith_prefix(prefix, params));
 }
 
 
-template<class Param, class... Params>
-inline group
-with_prefix(arg_string prefix, Param&& param, Params&&... params)
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
+twith_prefix(arg_tstring<Char> prefix, Param&& param, Params&&... params)
 {
-    return with_prefix(prefix, group{std::forward<Param>(param),
-                                     std::forward<Params>(params)...});
+    return twith_prefix(prefix, tgroup<Char>{std::forward<Param>(param),
+                                      std::forward<Params>(params)...});
 }
 
 
@@ -3892,50 +4040,53 @@ with_prefix(arg_string prefix, Param&& param, Params&&... params)
  * @param longpfx  : used for flags with length > 1
  *
  *****************************************************************************/
-inline parameter&&
-with_prefixes_short_long(const arg_string& shortpfx, const arg_string& longpfx,
-                         parameter&& p)
+template<typename Char>
+inline tparameter<Char>&&
+twith_prefixes_short_long(const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
+                          tparameter<Char>&& p)
 {
-    return std::move(with_prefixes_short_long(shortpfx, longpfx, p));
+    return std::move(twith_prefixes_short_long(shortpfx, longpfx, std::forward<tparameter<Char>>(p)));
 }
 
 
 //-------------------------------------------------------------------
-inline group&
-with_prefixes_short_long(const arg_string& shortFlagPrefix,
-                         const arg_string& longFlagPrefix,
-                         group& g)
+template<typename Char>
+inline tgroup<Char>&
+twith_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
+                          const arg_tstring<Char>& longFlagPrefix,
+                          tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            with_prefixes_short_long(shortFlagPrefix, longFlagPrefix, p.as_group());
+            twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix, p.as_group());
         } else {
-            with_prefixes_short_long(shortFlagPrefix, longFlagPrefix, p.as_param());
+            twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix, std::forward<tparameter<Char>>(p.as_param()));
         }
     }
     return g;
 }
 
 
-inline group&&
-with_prefixes_short_long(const arg_string& shortFlagPrefix,
-                         const arg_string& longFlagPrefix,
-                         group&& params)
+template<typename Char>
+inline tgroup<Char>&&
+twith_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
+                          const arg_tstring<Char>& longFlagPrefix,
+                          tgroup<Char>&& params)
 {
-    return std::move(with_prefixes_short_long(shortFlagPrefix, longFlagPrefix,
-                                              params));
+    return std::move(twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix,
+                                               params));
 }
 
 
-template<class Param, class... Params>
-inline group
-with_prefixes_short_long(const arg_string& shortFlagPrefix,
-                         const arg_string& longFlagPrefix,
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
+with_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
+                         const arg_tstring<Char>& longFlagPrefix,
                          Param&& param, Params&&... params)
 {
-    return with_prefixes_short_long(shortFlagPrefix, longFlagPrefix,
-                                    group{std::forward<Param>(param),
-                                          std::forward<Params>(params)...});
+    return twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix,
+                                     tgroup<Char>{std::forward<Param>(param),
+                                           std::forward<Params>(params)...});
 }
 
 
@@ -3945,40 +4096,43 @@ with_prefixes_short_long(const arg_string& shortFlagPrefix,
  * @brief recursively prepends a suffix to all flags
  *
  *****************************************************************************/
-inline parameter&&
-with_suffix(const arg_string& suffix, parameter&& p) {
-    return std::move(with_suffix(suffix, p));
+template<typename Char>
+inline tparameter<Char>&&
+twith_suffix(const arg_tstring<Char>& suffix, tparameter<Char>&& p) {
+    return std::move(twith_suffix(suffix, std::forward<tparameter<Char>>(p)));
 }
 
 
 //-------------------------------------------------------------------
-inline group&
-with_suffix(const arg_string& suffix, group& g)
+template<typename Char>
+inline tgroup<Char>&
+twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            with_suffix(suffix, p.as_group());
+            twith_suffix(suffix, p.as_group());
         } else {
-            with_suffix(suffix, p.as_param());
+            twith_suffix(suffix, p.as_param());
         }
     }
     return g;
 }
 
 
-inline group&&
-with_suffix(const arg_string& suffix, group&& params)
+template<typename Char>
+inline tgroup<Char>&&
+twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>&& params)
 {
-    return std::move(with_suffix(suffix, params));
+    return std::move(twith_suffix(suffix, params));
 }
 
 
-template<class Param, class... Params>
-inline group
-with_suffix(arg_string suffix, Param&& param, Params&&... params)
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
+twith_suffix(arg_tstring<Char> suffix, Param&& param, Params&&... params)
 {
-    return with_suffix(suffix, group{std::forward<Param>(param),
-                                     std::forward<Params>(params)...});
+    return twith_suffix(suffix, tgroup<Char>{std::forward<Param>(param),
+                                      std::forward<Params>(params)...});
 }
 
 
@@ -3991,50 +4145,53 @@ with_suffix(arg_string suffix, Param&& param, Params&&... params)
  * @param longsfx  : used for flags with length > 1
  *
  *****************************************************************************/
-inline parameter&&
-with_suffixes_short_long(const arg_string& shortsfx, const arg_string& longsfx,
-                         parameter&& p)
+template<typename Char>
+inline tparameter<Char>&&
+twith_suffixes_short_long(const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
+                          tparameter<Char>&& p)
 {
-    return std::move(with_suffixes_short_long(shortsfx, longsfx, p));
+    return std::move(twith_suffixes_short_long(shortsfx, longsfx, std::forward<tparameter<Char>>(p)));
 }
 
 
 //-------------------------------------------------------------------
-inline group&
-with_suffixes_short_long(const arg_string& shortFlagSuffix,
-                         const arg_string& longFlagSuffix,
-                         group& g)
+template<typename Char>
+inline tgroup<Char>&
+twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
+                         const arg_tstring<Char>& longFlagSuffix,
+                         tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            with_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_group());
+            twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_group());
         } else {
-            with_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_param());
+            twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_param());
         }
     }
     return g;
 }
 
 
-inline group&&
-with_suffixes_short_long(const arg_string& shortFlagSuffix,
-                         const arg_string& longFlagSuffix,
-                         group&& params)
+template<typename Char>
+inline tgroup<Char>&&
+twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
+                          const arg_tstring<Char>& longFlagSuffix,
+                          tgroup<Char>&& params)
 {
-    return std::move(with_suffixes_short_long(shortFlagSuffix, longFlagSuffix,
-                                              params));
+    return std::move(twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix,
+                                               params));
 }
 
 
-template<class Param, class... Params>
-inline group
-with_suffixes_short_long(const arg_string& shortFlagSuffix,
-                         const arg_string& longFlagSuffix,
-                         Param&& param, Params&&... params)
+template<typename Char, class Param, class... Params>
+inline tgroup<Char>
+twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
+                          const arg_tstring<Char>& longFlagSuffix,
+                          Param&& param, Params&&... params)
 {
-    return with_suffixes_short_long(shortFlagSuffix, longFlagSuffix,
-                                    group{std::forward<Param>(param),
-                                          std::forward<Params>(params)...});
+    return twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix,
+                                     tgroup<Char>{std::forward<Param>(param),
+                                           std::forward<Params>(params)...});
 }
 
 
@@ -4061,15 +4218,16 @@ namespace detail {
  *        or the beginning/end of the outermost group
  *
  *****************************************************************************/
-class scoped_dfs_traverser
+template<typename Char>
+class tscoped_dfs_traverser
 {
 public:
-    using dfs_traverser = group::depth_first_traverser;
+    using dfs_traverser = typename tgroup<Char>::depth_first_traverser;
 
-    scoped_dfs_traverser() = default;
+    tscoped_dfs_traverser() = default;
 
     explicit
-    scoped_dfs_traverser(const group& g):
+    tscoped_dfs_traverser(const tgroup<Char>& g):
         pos_{g}, lastMatch_{}, posAfterLastMatch_{}, scopes_{},
         ignoreBlocks_{false},
         repeatGroupStarted_{false}, repeatGroupContinues_{false}
@@ -4078,30 +4236,30 @@ public:
     const dfs_traverser& base() const noexcept { return pos_; }
     const dfs_traverser& last_match() const noexcept { return lastMatch_; }
 
-    const group& parent() const noexcept { return pos_.parent(); }
+    const tgroup<Char>& parent() const noexcept { return pos_.parent(); }
 
-    const group* innermost_repeat_group() const noexcept {
+    const tgroup<Char>* innermost_repeat_group() const noexcept {
         return pos_.innermost_repeat_group();
     }
-    const group* outermost_join_group() const noexcept {
+    const tgroup<Char>* outermost_join_group() const noexcept {
         return pos_.outermost_join_group();
     }
-    const group* innermost_blocking_group() const noexcept {
+    const tgroup<Char>* innermost_blocking_group() const noexcept {
         return pos_.innermost_blocking_group();
     }
-    const group* innermost_exclusive_group() const noexcept {
+    const tgroup<Char>* innermost_exclusive_group() const noexcept {
         return pos_.innermost_exclusive_group();
     }
 
-    const pattern* operator ->() const noexcept { return pos_.operator->(); }
-    const pattern& operator *() const noexcept { return *pos_; }
+    const tpattern<Char>* operator ->() const noexcept { return pos_.operator->(); }
+    const tpattern<Char>& operator *() const noexcept { return *pos_; }
 
-    const pattern* ptr() const noexcept { return pos_.operator->(); }
+    const tpattern<Char>* ptr() const noexcept { return pos_.operator->(); }
 
     explicit operator bool() const noexcept { return bool(pos_); }
 
     bool joinable() const noexcept { return pos_.joinable(); }
-    arg_string common_flag_prefix() const { return pos_.common_flag_prefix(); }
+    arg_tstring<Char> common_flag_prefix() const { return pos_.common_flag_prefix(); }
 
     void ignore_blocking(bool yes) { ignoreBlocks_ = yes; }
 
@@ -4116,15 +4274,15 @@ public:
     bool start_of_repeat_group() const noexcept { return repeatGroupStarted_; }
 
     //-----------------------------------------------------
-    scoped_dfs_traverser&
+    tscoped_dfs_traverser&
     next_sibling() { pos_.next_sibling(); return *this; }
 
-    scoped_dfs_traverser&
+    tscoped_dfs_traverser&
     next_after_siblings() { pos_.next_after_siblings(); return *this; }
 
 
     //-----------------------------------------------------
-    scoped_dfs_traverser&
+    tscoped_dfs_traverser&
     operator ++ ()
     {
         if(!pos_) return *this;
@@ -4134,13 +4292,13 @@ public:
             return *this;
         }
 
-        //current pattern can block if it didn't match already
+        //current tpattern can block if it didn't match already
         if(ignoreBlocks_ || matched()) {
             ++pos_;
         }
         else if(!pos_->is_group()) {
-            //current group can block if we didn't have any match in it
-            const group* g = pos_.outermost_blocking_group_fully_explored();
+            //current tgroup can block if we didn't have any match in it
+            const tgroup<Char>* g = pos_.outermost_blocking_group_fully_explored();
             //no match in 'g' before -> skip to after its siblings
             if(g && !lastMatch_.is_inside(g)) {
                 pos_.back_to_ancestor(g).next_after_siblings();
@@ -4165,7 +4323,7 @@ public:
     }
 
     //-----------------------------------------------------
-    void next_after_match(scoped_dfs_traverser match)
+    void next_after_match(tscoped_dfs_traverser match)
     {
         if(!match || ignoreBlocks_) return;
 
@@ -4200,7 +4358,7 @@ public:
                     pos_ = std::move(match.pos_);
                 }
             }
-            else { //not last in current group
+            else { //not last in current tgroup
                 //if current param is not repeatable, go directly to next
                 if(!match->repeatable() && !match->is_group()) {
                     ++match.pos_;
@@ -4240,7 +4398,7 @@ private:
     }
 
     //-----------------------------------------------------
-    void check_repeat_group_start(const scoped_dfs_traverser& newMatch)
+    void check_repeat_group_start(const tscoped_dfs_traverser& newMatch)
     {
         const auto newrg = newMatch.innermost_repeat_group();
         if(!newrg) {
@@ -4253,10 +4411,10 @@ private:
             repeatGroupStarted_ = true;
         }
         else {
-            //special case: repeat group is outermost group
+            //special case: repeat tgroup is outermost tgroup
             //=> we can never really 'leave' and 'reenter' it
             //but if the current scope is the first element, then we are
-            //conceptually at a position 'before' the group
+            //conceptually at a position 'before' the tgroup
             repeatGroupStarted_ = scopes_.empty() || (
                     newrg == pos_.root() &&
                     scopes_.top().param() == &(*pos_.root()->begin()) );
@@ -4327,7 +4485,7 @@ private:
     dfs_traverser pos_;
     dfs_traverser lastMatch_;
     dfs_traverser posAfterLastMatch_;
-    std::stack<dfs_traverser::memento> scopes_;
+    std::stack<typename dfs_traverser::memento> scopes_;
     bool ignoreBlocks_ = false;
     bool repeatGroupStarted_ = false;
     bool repeatGroupContinues_ = false;
@@ -4338,21 +4496,24 @@ private:
 
 /*****************************************************************************
  *
- * some parameter property predicates
+ * some tparameter property predicates
  *
  *****************************************************************************/
+template<typename Char>
 struct select_all {
-    bool operator () (const parameter&) const noexcept { return true; }
+    bool operator () (const tparameter<Char>&) const noexcept { return true; }
 };
 
+template<typename Char>
 struct select_flags {
-    bool operator () (const parameter& p) const noexcept {
+    bool operator () (const tparameter<Char>& p) const noexcept {
         return !p.flags().empty();
     }
 };
 
+template<typename Char>
 struct select_values {
-    bool operator () (const parameter& p) const noexcept {
+    bool operator () (const tparameter<Char>& p) const noexcept {
         return p.flags().empty();
     }
 };
@@ -4364,26 +4525,27 @@ struct select_values {
  * @brief result of a matching operation
  *
  *****************************************************************************/
+template<typename Char>
 class match_t {
 public:
-    using size_type = arg_string::size_type;
+    using size_type = typename arg_tstring<Char>::size_type;
 
     match_t() = default;
 
-    match_t(arg_string s, scoped_dfs_traverser p):
+    match_t(arg_tstring<Char> s, tscoped_dfs_traverser<Char> p):
         str_{std::move(s)}, pos_{std::move(p)}
     {}
 
     size_type length() const noexcept { return str_.size(); }
 
-    const arg_string& str() const noexcept { return str_; }
-    const scoped_dfs_traverser& pos() const noexcept { return pos_; }
+    const arg_tstring<Char>& str() const noexcept { return str_; }
+    const tscoped_dfs_traverser<Char>& pos() const noexcept { return pos_; }
 
     explicit operator bool() const noexcept { return bool(pos_); }
 
 private:
-    arg_string str_;
-    scoped_dfs_traverser pos_;
+    arg_tstring<Char> str_;
+    tscoped_dfs_traverser<Char> pos_;
 };
 
 
@@ -4394,9 +4556,9 @@ private:
  *        candidate parameters are traversed using a scoped DFS traverser
  *
  *****************************************************************************/
-template<class ParamSelector>
-match_t
-full_match(scoped_dfs_traverser pos, const arg_string& arg,
+template<typename Char, class ParamSelector>
+match_t<Char>
+full_match(tscoped_dfs_traverser<Char> pos, const arg_tstring<Char>& arg,
            const ParamSelector& select)
 {
     while(pos) {
@@ -4411,7 +4573,7 @@ full_match(scoped_dfs_traverser pos, const arg_string& arg,
         }
         ++pos;
     }
-    return match_t{};
+    return match_t<Char>{};
 }
 
 
@@ -4423,12 +4585,12 @@ full_match(scoped_dfs_traverser pos, const arg_string& arg,
  *        candidate parameters are traversed using a scoped DFS traverser
  *
  *****************************************************************************/
-template<class ParamSelector>
-match_t
-longest_prefix_match(scoped_dfs_traverser pos, const arg_string& arg,
+template<typename Char, class ParamSelector>
+match_t<Char>
+longest_prefix_match(tscoped_dfs_traverser<Char> pos, const arg_tstring<Char>& arg,
                      const ParamSelector& select)
 {
-    match_t longest;
+    match_t<Char> longest;
 
     while(pos) {
         if(pos->is_param()) {
@@ -4437,10 +4599,10 @@ longest_prefix_match(scoped_dfs_traverser pos, const arg_string& arg,
                 auto match = param.match(arg);
                 if(match.prefix()) {
                     if(match.length() == arg.size()) {
-                        return match_t{arg, std::move(pos)};
+                        return match_t<Char>{arg, std::move(pos)};
                     }
                     else if(match.length() > longest.length()) {
-                        longest = match_t{arg.substr(match.at(), match.length()), 
+                        longest = match_t<Char>{arg.substr(match.at(), match.length()), 
                                           pos};
                     }
                 }
@@ -4459,9 +4621,9 @@ longest_prefix_match(scoped_dfs_traverser pos, const arg_string& arg,
  *        candidate parameters are traversed using a scoped DFS traverser
  *
  *****************************************************************************/
-template<class ParamSelector>
-match_t
-partial_match(scoped_dfs_traverser pos, const arg_string& arg,
+template<typename Char, class ParamSelector>
+match_t<Char>
+partial_match(tscoped_dfs_traverser<Char> pos, const arg_tstring<Char>& arg,
               const ParamSelector& select)
 {
     while(pos) {
@@ -4470,14 +4632,14 @@ partial_match(scoped_dfs_traverser pos, const arg_string& arg,
             if(select(param)) {
                 const auto match = param.match(arg);
                 if(match) {
-                    return match_t{arg.substr(match.at(), match.length()),
+                    return match_t<Char>{arg.substr(match.at(), match.length()),
                                    std::move(pos)};
                 }
             }
         }
         ++pos;
     }
-    return match_t{};
+    return match_t<Char>{};
 }
 
 } //namespace detail
@@ -4492,11 +4654,12 @@ partial_match(scoped_dfs_traverser pos, const arg_string& arg,
  * @brief default command line arguments parser
  *
  *******************************************************************/
+template<typename Char>
 class parser
 {
 public:
-    using dfs_traverser = group::depth_first_traverser;
-    using scoped_dfs_traverser = detail::scoped_dfs_traverser;
+    using        dfs_traverser = typename tgroup<Char>::depth_first_traverser;
+    using scoped_dfs_traverser = typename detail::tscoped_dfs_traverser<Char>;
 
 
     /*****************************************************//**
@@ -4507,7 +4670,7 @@ public:
         friend class parser;
 
         explicit
-        arg_mapping(arg_index idx, arg_string s,
+        arg_mapping(arg_index idx, arg_tstring<Char> s,
                     const dfs_traverser& match)
         :
             index_{idx}, arg_{std::move(s)}, match_{match},
@@ -4516,16 +4679,16 @@ public:
         {}
 
         explicit
-        arg_mapping(arg_index idx, arg_string s) :
+        arg_mapping(arg_index idx, arg_tstring<Char> s) :
             index_{idx}, arg_{std::move(s)}, match_{},
             repeat_{0}, startsRepeatGroup_{false},
             blocked_{false}, conflict_{false}
         {}
 
         arg_index index() const noexcept { return index_; }
-        const arg_string& arg() const noexcept { return arg_; }
+        const arg_tstring<Char>& arg() const noexcept { return arg_; }
 
-        const parameter* param() const noexcept {
+        const tparameter<Char>* param() const noexcept {
             return match_ && match_->is_param()
                 ? &(match_->as_param()) : nullptr;
         }
@@ -4547,7 +4710,7 @@ public:
 
     private:
         arg_index index_;
-        arg_string arg_;
+        arg_tstring<Char> arg_;
         dfs_traverser match_;
         std::size_t repeat_;
         bool startsRepeatGroup_;
@@ -4561,16 +4724,16 @@ public:
     class missing_event {
     public:
         explicit
-        missing_event(const parameter* p, arg_index after):
+        missing_event(const tparameter<Char>* p, arg_index after):
             param_{p}, aftIndex_{after}
         {}
 
-        const parameter* param() const noexcept { return param_; }
+        const tparameter<Char>* param() const noexcept { return param_; }
 
         arg_index after_index() const noexcept { return aftIndex_; }
 
     private:
-        const parameter* param_;
+        const tparameter<Char>* param_;
         arg_index aftIndex_;
     };
 
@@ -4600,7 +4763,7 @@ public:
      *  @param offset = argument index offset used for reports
      * */
     explicit
-    parser(const group& root, arg_index offset = 0):
+    parser(const tgroup<Char>& root, arg_index offset = 0):
         root_{&root}, pos_{root},
         index_{offset-1}, eaten_{0},
         args_{}, missCand_{}, blocked_{false}
@@ -4614,7 +4777,7 @@ public:
 
     //---------------------------------------------------------------
     /** @brief processes one command line argument */
-    bool operator() (const arg_string& arg)
+    bool operator() (const arg_tstring<Char>& arg)
     {
         ++eaten_;
         ++index_;
@@ -4667,12 +4830,12 @@ public:
 
 private:
     //---------------------------------------------------------------
-    using match_t = detail::match_t;
+    using match_t = detail::match_t<Char>;
 
 
     //---------------------------------------------------------------
     /** @brief try to match argument with unreachable parameter */
-    bool try_match_blocked(const arg_string& arg)
+    bool try_match_blocked(const arg_tstring<Char>& arg)
     {
         //try to match ahead (using temporary parser)
         if(pos_) {
@@ -4690,7 +4853,7 @@ private:
     }
 
     //---------------------------------------------------------------
-    bool try_match_blocked(parser&& parse, const arg_string& arg)
+    bool try_match_blocked(parser&& parse, const arg_tstring<Char>& arg)
     {
         const auto nold = int(parse.args_.size());
 
@@ -4707,7 +4870,7 @@ private:
 
     //---------------------------------------------------------------
     /** @brief try to find a parameter/pattern that matches 'arg' */
-    bool try_match(const arg_string& arg)
+    bool try_match(const arg_tstring<Char>& arg)
     {
         //match greedy parameters before everything else
         if(pos_->is_param() && pos_->blocking() && pos_->as_param().greedy()) {
@@ -4719,12 +4882,12 @@ private:
         }
 
         //try flags first (alone, joinable or strict sequence)
-        if(try_match_full(arg, detail::select_flags{})) return true;
+        if(try_match_full(arg, detail::select_flags<Char>{})) return true;
         if(try_match_joined_flags(arg)) return true;
-        if(try_match_joined_sequence(arg, detail::select_flags{})) return true;
+        if(try_match_joined_sequence(arg, detail::select_flags<Char>{})) return true;
         //try value params (alone or strict sequence)
-        if(try_match_full(arg, detail::select_values{})) return true;
-        if(try_match_joined_sequence(arg, detail::select_all{})) return true;
+        if(try_match_full(arg, detail::select_values<Char>{})) return true;
+        if(try_match_joined_sequence(arg, detail::select_all<Char>{})) return true;
         //try joinable params + values in any order
         if(try_match_joined_params(arg)) return true;
         return false;
@@ -4736,7 +4899,7 @@ private:
      * @param select : predicate that candidate parameters must satisfy
      */
     template<class ParamSelector>
-    bool try_match_full(const arg_string& arg, const ParamSelector& select)
+    bool try_match_full(const arg_tstring<Char>& arg, const ParamSelector& select)
     {
         auto match = detail::full_match(pos_, arg, select);
         if(!match) return false;
@@ -4751,7 +4914,7 @@ private:
      *                 'arg' must satisfy
      */
     template<class ParamSelector>
-    bool try_match_joined_sequence(arg_string arg,
+    bool try_match_joined_sequence(arg_tstring<Char> arg,
                                    const ParamSelector& acceptFirst)
     {
         auto fstMatch = detail::longest_prefix_match(pos_, arg, acceptFirst);
@@ -4799,20 +4962,20 @@ private:
 
     //-----------------------------------------------------
     /** @brief try to match 'arg' as a concatenation of joinable flags */
-    bool try_match_joined_flags(const arg_string& arg)
+    bool try_match_joined_flags(const arg_tstring<Char>& arg)
     {
-        return find_join_group(pos_, [&](const group& g) {
-            return try_match_joined(g, arg, detail::select_flags{},
+        return find_join_group(pos_, [&](const tgroup<Char>& g) {
+            return try_match_joined(g, arg, detail::select_flags<Char>{},
                                     g.common_flag_prefix());
         });
     }
 
     //---------------------------------------------------------------
     /** @brief try to match 'arg' as a concatenation of joinable parameters */
-    bool try_match_joined_params(const arg_string& arg)
+    bool try_match_joined_params(const arg_tstring<Char>& arg)
     {
-        return find_join_group(pos_, [&](const group& g) {
-            return try_match_joined(g, arg, detail::select_all{});
+        return find_join_group(pos_, [&](const tgroup<Char>& g) {
+            return try_match_joined(g, arg, detail::select_all<Char>{});
         });
     }
 
@@ -4821,11 +4984,11 @@ private:
      *         that are all contained within one group
      */
     template<class ParamSelector>
-    bool try_match_joined(const group& joinGroup, arg_string arg,
+    bool try_match_joined(const tgroup<Char>& joinGroup, arg_tstring<Char> arg,
                           const ParamSelector& select,
-                          const arg_string& prefix = "")
+                          const arg_tstring<Char>& prefix = "")
     {
-        //temporary parser with 'joinGroup' as top-level group
+        //temporary parser with 'joinGroup' as top-level tgroup
         parser parse {joinGroup};
         //records temporary matches
         std::vector<match_t> matches;
@@ -4885,7 +5048,7 @@ private:
 
 
     //---------------------------------------------------------------
-    void add_nomatch(const arg_string& arg) {
+    void add_nomatch(const arg_tstring<Char>& arg) {
         args_.emplace_back(index_, arg);
     }
 
@@ -4920,7 +5083,7 @@ private:
                 for(auto i = args_.rbegin(); i != args_.rend(); ++i) {
                     if(!i->blocked()) {
                         for(const auto& c : i->match_.stack()) {
-                            //sibling within same exclusive group => conflict
+                            //sibling within same exclusive tgroup => conflict
                             if(c.parent == m.parent && c.cur != m.cur) {
                                 conflict = true;
                                 i->conflict_ = true;
@@ -4956,13 +5119,13 @@ private:
         //alternative groups that the current match is a member of
         //if so, we can discard the miss
 
-        //go through all exclusive groups of matching pattern
+        //go through all exclusive groups of matching tpattern
         for(const auto& m : match.stack()) {
             if(m.parent->exclusive()) {
                 for(auto i = int(missCand_.size())-1; i >= 0; --i) {
                     bool removed = false;
                     for(const auto& c : missCand_[i].pos.stack()) {
-                        //sibling within same exclusive group => discard
+                        //sibling within same exclusive tgroup => discard
                         if(c.parent == m.parent && c.cur != m.cur) {
                             missCand_.erase(missCand_.begin() + i);
                             if(missCand_.empty()) return;
@@ -4988,13 +5151,13 @@ private:
         if(npos.is_alternative()) npos.skip_alternatives();
         ++npos;
         //need to add potential misses if:
-        //either new repeat group was started
+        //either new repeat tgroup was started
         const auto newRepGroup = match.innermost_repeat_group();
         if(newRepGroup) {
             if(pos_.start_of_repeat_group()) {
                 for_each_potential_miss(std::move(npos),
                     [&,this](const dfs_traverser& pos) {
-                        //only add candidates within repeat group
+                        //only add candidates within repeat tgroup
                         if(newRepGroup == pos.innermost_repeat_group()) {
                             missCand_.emplace_back(pos, index_, true);
                         }
@@ -5049,7 +5212,7 @@ private:
 
 
     //---------------------------------------------------------------
-    std::size_t occurrences_of(const parameter* p) const
+    std::size_t occurrences_of(const tparameter<Char>* p) const
     {
         if(!p) return 0;
 
@@ -5062,7 +5225,7 @@ private:
 
 
     //---------------------------------------------------------------
-    const group* root_;
+    const tgroup<Char>* root_;
     scoped_dfs_traverser pos_;
     arg_index index_;
     arg_index eaten_;
@@ -5080,20 +5243,22 @@ private:
  *        and missing parameters
  *
  *****************************************************************************/
-class parsing_result
+template<typename Char>
+class tparsing_result
 {
 public:
-    using arg_mapping    = parser::arg_mapping;
-    using arg_mappings   = parser::arg_mappings;
-    using missing_event  = parser::missing_event;
-    using missing_events = parser::missing_events;
-    using iterator       = arg_mappings::const_iterator;
+    using arg_mapping    = typename parser<Char>::arg_mapping;
+    using arg_mappings   = typename parser<Char>::arg_mappings;
+    using missing_event  = typename parser<Char>::missing_event;
+    using missing_events = typename parser<Char>::missing_events;
+    using iterator       = typename arg_mappings::const_iterator;
+    using size_type      = typename arg_mappings::size_type;
 
     //-----------------------------------------------------
     /** @brief default: empty result */
-    parsing_result() = default;
+    tparsing_result() = default;
 
-    parsing_result(arg_mappings arg2param, missing_events misses):
+    tparsing_result(arg_mappings arg2param, missing_events misses):
         arg2param_{std::move(arg2param)}, missing_{std::move(misses)}
     {}
 
@@ -5101,7 +5266,7 @@ public:
     /** @brief returns number of arguments that could not be mapped to
      *         a parameter
      */
-    arg_mappings::size_type
+    size_type
     unmapped_args_count() const noexcept {
         return std::count_if(arg2param_.begin(), arg2param_.end(),
             [](const arg_mapping& a){ return !a.param(); });
@@ -5169,7 +5334,8 @@ namespace {
  *        (no insertions or deletions allowed)
  *
  *****************************************************************************/
-void sanitize_args(arg_list& args)
+template<typename Char>
+void sanitize_args(arg_tlist<Char>& args)
 {
     //e.g. {"-o12", ".34"} -> {"-o", "12.34"}
 
@@ -5183,7 +5349,7 @@ void sanitize_args(arg_list& args)
             using std::prev;
             auto& prv = *prev(i);
             auto fstDigit = std::find_if_not(prv.rbegin(), prv.rend(),
-                [](arg_string::value_type c){
+                [](arg_tstring<Char>::value_type c){
                     return std::isdigit(c);
                 }).base();
 
@@ -5210,7 +5376,8 @@ void sanitize_args(arg_list& args)
  * @brief executes actions based on a parsing result
  *
  *****************************************************************************/
-void execute_actions(const parsing_result& res)
+template<typename Char>
+void execute_actions(const tparsing_result<Char>& res)
 {
     for(const auto& m : res) {
         if(m.param()) {
@@ -5236,18 +5403,19 @@ void execute_actions(const parsing_result& res)
  * @brief parses input args
  *
  *****************************************************************************/
-static parsing_result
-parse_args(const arg_list& args, const group& cli,
+template<typename Char>
+static tparsing_result<Char>
+parse_args(const arg_tlist<Char>& args, const tgroup<Char>& cli,
            arg_index offset = 0)
 {
     //parse args and store unrecognized arg indices
-    parser parse{cli, offset};
+    parser<Char> parse{cli, offset};
     for(const auto& arg : args) {
         parse(arg);
         if(!parse.valid()) break;
     }
 
-    return parsing_result{parse.args(), parse.missed()};
+    return tparsing_result<Char>{parse.args(), parse.missed()};
 }
 
 /*************************************************************************//**
@@ -5255,8 +5423,9 @@ parse_args(const arg_list& args, const group& cli,
  * @brief parses input args & executes actions
  *
  *****************************************************************************/
-static parsing_result
-parse_and_execute(const arg_list& args, const group& cli,
+template<typename Char>
+static tparsing_result<Char>
+parse_and_execute(const arg_tlist<Char>& args, const tgroup<Char>& cli,
                   arg_index offset = 0)
 {
     auto result = parse_args(args, cli, offset);
@@ -5277,8 +5446,9 @@ parse_and_execute(const arg_list& args, const group& cli,
  * @brief parses vector of arg strings and executes actions
  *
  *****************************************************************************/
-inline parsing_result
-parse(arg_list args, const group& cli)
+template<typename Char>
+inline tparsing_result<Char>
+parse(arg_tlist<Char> args, const tgroup<Char>& cli)
 {
     detail::sanitize_args(args);
     return detail::parse_and_execute(args, cli);
@@ -5290,10 +5460,11 @@ parse(arg_list args, const group& cli)
  * @brief parses initializer_list of C-style arg strings and executes actions
  *
  *****************************************************************************/
-inline parsing_result
-parse(std::initializer_list<const char*> arglist, const group& cli)
+template<typename Char>
+inline tparsing_result<Char>
+parse(std::initializer_list<const Char*> arglist, const tgroup<Char>& cli)
 {
-    arg_list args;
+    arg_tlist<Char> args;
     args.reserve(arglist.size());
     for(auto a : arglist) {
         args.push_back(a);
@@ -5308,11 +5479,11 @@ parse(std::initializer_list<const char*> arglist, const group& cli)
  * @brief parses range of arg strings and executes actions
  *
  *****************************************************************************/
-template<class InputIterator>
-inline parsing_result
-parse(InputIterator first, InputIterator last, const group& cli)
+template<typename Char, class InputIterator>
+inline tparsing_result<Char>
+parse(InputIterator first, InputIterator last, const tgroup<Char>& cli)
 {
-    return parse(arg_list(first,last), cli);
+    return parse(arg_tlist<Char>(first,last), cli);
 }
 
 
@@ -5321,10 +5492,11 @@ parse(InputIterator first, InputIterator last, const group& cli)
  * @brief parses the standard array of command line arguments; omits argv[0]
  *
  *****************************************************************************/
-inline parsing_result
-parse(const int argc, char* argv[], const group& cli, arg_index offset = 1)
+template<typename Char>
+inline tparsing_result<Char>
+parse(const int argc, Char* argv[], const tgroup<Char>& cli, arg_index offset = 1)
 {
-    arg_list args;
+    arg_tlist<Char> args;
     if(offset < argc) args.assign(argv+offset, argv+argc);
     detail::sanitize_args(args);
     return detail::parse_and_execute(args, cli, offset);
@@ -5341,41 +5513,42 @@ parse(const int argc, char* argv[], const group& cli, arg_index offset = 1)
  *        Can be used to limit documentation generation to parameter subsets.
  *
  *****************************************************************************/
-class param_filter
+template<typename Char>
+class paramf
 {
 public:
     /** @brief only allow parameters with given prefix */
-    param_filter& prefix(const arg_string& p) noexcept {
+    paramf& prefix(const arg_tstring<Char>& p) noexcept {
         prefix_ = p; return *this;
     }
     /** @brief only allow parameters with given prefix */
-    param_filter& prefix(arg_string&& p) noexcept {
+    paramf& prefix(arg_tstring<Char>&& p) noexcept {
         prefix_ = std::move(p); return *this;
     }
-    const arg_string& prefix()  const noexcept { return prefix_; }
+    const arg_tstring<Char>& prefix()  const noexcept { return prefix_; }
 
     /** @brief only allow parameters with given requirement status */
-    param_filter& required(tri t)  noexcept { required_ = t; return *this; }
+    paramf& required(tri t)  noexcept { required_ = t; return *this; }
     tri           required() const noexcept { return required_; }
 
     /** @brief only allow parameters with given blocking status */
-    param_filter& blocking(tri t)  noexcept { blocking_ = t; return *this; }
+    paramf& blocking(tri t)  noexcept { blocking_ = t; return *this; }
     tri           blocking() const noexcept { return blocking_; }
 
     /** @brief only allow parameters with given repeatable status */
-    param_filter& repeatable(tri t)  noexcept { repeatable_ = t; return *this; }
+    paramf& repeatable(tri t)  noexcept { repeatable_ = t; return *this; }
     tri           repeatable() const noexcept { return repeatable_; }
 
     /** @brief only allow parameters with given docstring status */
-    param_filter& has_doc(tri t)  noexcept { hasDoc_ = t; return *this; }
+    paramf& has_doc(tri t)  noexcept { hasDoc_ = t; return *this; }
     tri           has_doc() const noexcept { return hasDoc_; }
 
 
     /** @brief returns true, if parameter satisfies all filters */
-    bool operator() (const parameter& p) const noexcept {
+    bool operator() (const tparameter<Char>& p) const noexcept {
         if(!prefix_.empty()) {
             if(!std::any_of(p.flags().begin(), p.flags().end(),
-                [&](const arg_string& flag){
+                [&](const arg_tstring<Char>& flag){
                     return str::has_prefix(flag, prefix_);
                 })) return false;
         }
@@ -5387,7 +5560,7 @@ public:
     }
 
 private:
-    arg_string prefix_;
+    arg_tstring<Char> prefix_;
     tri required_   = tri::either;
     tri blocking_   = tri::either;
     tri repeatable_ = tri::either;
@@ -5404,23 +5577,24 @@ private:
  * @brief documentation formatting options
  *
  *****************************************************************************/
-class doc_formatting
+template<typename Char>
+class tdoc_formatting
 {
 public:
-    using string = doc_string;
+    using string = doc_tstring<Char>;
 
     /** @brief same as 'first_column' */
 #if __cplusplus >= 201402L
     [[deprecated]]
 #endif
-    doc_formatting& start_column(int col) { return first_column(col); }
+    tdoc_formatting& start_column(int col) { return first_column(col); }
 #if __cplusplus >= 201402L
     [[deprecated]]
 #endif
     int start_column() const noexcept { return first_column(); }
 
     /** @brief determines column where documentation printing starts */
-    doc_formatting&
+    tdoc_formatting&
     first_column(int col) {
         //limit to [0,last_column] but push doc_column to the right if necessary
         if(col < 0) col = 0;
@@ -5434,7 +5608,7 @@ public:
     }
 
     /** @brief determines column where docstrings start */
-    doc_formatting&
+    tdoc_formatting&
     doc_column(int col) {
         //limit to [first_column,last_column]
         if(col < 0) col = 0;
@@ -5450,7 +5624,7 @@ public:
     /** @brief determines column that no documentation text must exceed;
      *         (text should be wrapped appropriately after this column)
      */
-    doc_formatting&
+    tdoc_formatting&
     last_column(int col) {
         //limit to [first_column,oo] but push doc_column to the left if necessary
         if(col < first_column()) col = first_column();
@@ -5465,54 +5639,54 @@ public:
 
     /** @brief determines indent of documentation lines
      *         for children of a documented group */
-    doc_formatting& indent_size(int indent) { indentSize_ = indent; return *this; }
+    tdoc_formatting& indent_size(int indent) { indentSize_ = indent; return *this; }
     int             indent_size() const noexcept  { return indentSize_; }
 
     /** @brief determines string to be used
      *         if a parameter has no flags and no label  */
-    doc_formatting& empty_label(const string& label) {
+    tdoc_formatting& empty_label(const string& label) {
         emptyLabel_ = label;
         return *this;
     }
     const string& empty_label() const noexcept { return emptyLabel_; }
 
     /** @brief determines string for separating parameters */
-    doc_formatting& param_separator(const string& sep) {
+    tdoc_formatting& param_separator(const string& sep) {
         paramSep_ = sep;
         return *this;
     }
     const string& param_separator() const noexcept { return paramSep_; }
 
     /** @brief determines string for separating groups (in usage lines) */
-    doc_formatting& group_separator(const string& sep) {
+    tdoc_formatting& group_separator(const string& sep) {
         groupSep_ = sep;
         return *this;
     }
     const string& group_separator() const noexcept { return groupSep_; }
 
     /** @brief determines string for separating alternative parameters */
-    doc_formatting& alternative_param_separator(const string& sep) {
+    tdoc_formatting& alternative_param_separator(const string& sep) {
         altParamSep_ = sep;
         return *this;
     }
     const string& alternative_param_separator() const noexcept { return altParamSep_; }
 
     /** @brief determines string for separating alternative groups */
-    doc_formatting& alternative_group_separator(const string& sep) {
+    tdoc_formatting& alternative_group_separator(const string& sep) {
         altGroupSep_ = sep;
         return *this;
     }
     const string& alternative_group_separator() const noexcept { return altGroupSep_; }
 
     /** @brief determines string for separating flags of the same parameter */
-    doc_formatting& flag_separator(const string& sep) {
+    tdoc_formatting& flag_separator(const string& sep) {
         flagSep_ = sep;
         return *this;
     }
     const string& flag_separator() const noexcept { return flagSep_; }
 
     /** @brief determines strings surrounding parameter labels */
-    doc_formatting&
+    tdoc_formatting&
     surround_labels(const string& prefix, const string& postfix) {
         labelPre_ = prefix;
         labelPst_ = postfix;
@@ -5522,7 +5696,7 @@ public:
     const string& label_postfix() const noexcept { return labelPst_; }
 
     /** @brief determines strings surrounding optional parameters/groups */
-    doc_formatting&
+    tdoc_formatting&
     surround_optional(const string& prefix, const string& postfix) {
         optionPre_ = prefix;
         optionPst_ = postfix;
@@ -5532,7 +5706,7 @@ public:
     const string& optional_postfix() const noexcept { return optionPst_; }
 
     /** @brief determines strings surrounding repeatable parameters/groups */
-    doc_formatting&
+    tdoc_formatting&
     surround_repeat(const string& prefix, const string& postfix) {
         repeatPre_ = prefix;
         repeatPst_ = postfix;
@@ -5542,7 +5716,7 @@ public:
     const string& repeat_postfix() const noexcept { return repeatPst_; }
 
     /** @brief determines strings surrounding exclusive groups */
-    doc_formatting&
+    tdoc_formatting&
     surround_alternatives(const string& prefix, const string& postfix) {
         alternPre_ = prefix;
         alternPst_ = postfix;
@@ -5552,7 +5726,7 @@ public:
     const string& alternatives_postfix() const noexcept { return alternPst_; }
 
     /** @brief determines strings surrounding alternative flags */
-    doc_formatting&
+    tdoc_formatting&
     surround_alternative_flags(const string& prefix, const string& postfix) {
         alternFlagPre_ = prefix;
         alternFlagPst_ = postfix;
@@ -5562,7 +5736,7 @@ public:
     const string& alternative_flags_postfix() const noexcept { return alternFlagPst_; }
 
     /** @brief determines strings surrounding non-exclusive groups */
-    doc_formatting&
+    tdoc_formatting&
     surround_group(const string& prefix, const string& postfix) {
         groupPre_ = prefix;
         groupPst_ = postfix;
@@ -5572,7 +5746,7 @@ public:
     const string& group_postfix() const noexcept { return groupPst_; }
 
     /** @brief determines strings surrounding joinable groups */
-    doc_formatting&
+    tdoc_formatting&
     surround_joinable(const string& prefix, const string& postfix) {
         joinablePre_ = prefix;
         joinablePst_ = postfix;
@@ -5583,7 +5757,7 @@ public:
 
     /** @brief determines maximum number of flags per parameter to be printed
      *         in detailed parameter documentation lines */
-    doc_formatting& max_flags_per_param_in_doc(int max) {
+    tdoc_formatting& max_flags_per_param_in_doc(int max) {
         maxAltInDocs_ = max > 0 ? max : 0;
         return *this;
     }
@@ -5591,7 +5765,7 @@ public:
 
     /** @brief determines maximum number of flags per parameter to be printed
      *         in usage lines */
-    doc_formatting& max_flags_per_param_in_usage(int max) {
+    tdoc_formatting& max_flags_per_param_in_usage(int max) {
         maxAltInUsage_ = max > 0 ? max : 0;
         return *this;
     }
@@ -5599,7 +5773,7 @@ public:
 
     /** @brief determines number of empty rows after one single-line
      *         documentation entry */
-    doc_formatting& line_spacing(int lines) {
+    tdoc_formatting& line_spacing(int lines) {
         lineSpc_ = lines > 0 ? lines : 0;
         return *this;
     }
@@ -5608,7 +5782,7 @@ public:
     /** @brief determines number of empty rows before and after a paragraph;
      *         a paragraph is defined by a documented group or if
      *         a parameter documentation entry used more than one line */
-    doc_formatting& paragraph_spacing(int lines) {
+    tdoc_formatting& paragraph_spacing(int lines) {
         paragraphSpc_ = lines > 0 ? lines : 0;
         return *this;
     }
@@ -5616,7 +5790,7 @@ public:
 
     /** @brief determines if alternative flags with a common prefix should
      *         be printed in a merged fashion */
-    doc_formatting& merge_alternative_flags_with_common_prefix(bool yes = true) {
+    tdoc_formatting& merge_alternative_flags_with_common_prefix(bool yes = true) {
         mergeAltCommonPfx_ = yes;
         return *this;
     }
@@ -5626,7 +5800,7 @@ public:
 
     /** @brief determines if joinable flags with a common prefix should
      *         be printed in a merged fashion */
-    doc_formatting& merge_joinable_with_common_prefix(bool yes = true) {
+    tdoc_formatting& merge_joinable_with_common_prefix(bool yes = true) {
         mergeJoinableCommonPfx_ = yes;
         return *this;
     }
@@ -5637,7 +5811,7 @@ public:
     /** @brief determines if children of exclusive groups should be printed
      *         on individual lines if the exceed 'alternatives_min_split_size'
      */
-    doc_formatting& split_alternatives(bool yes = true) {
+    tdoc_formatting& split_alternatives(bool yes = true) {
         splitTopAlt_ = yes;
         return *this;
     }
@@ -5647,7 +5821,7 @@ public:
 
     /** @brief determines how many children exclusive groups can have before
      *         their children are printed on individual usage lines */
-    doc_formatting& alternatives_min_split_size(int size) {
+    tdoc_formatting& alternatives_min_split_size(int size) {
         groupSplitSize_ = size > 0 ? size : 0;
         return *this;
     }
@@ -5655,7 +5829,7 @@ public:
 
     /** @brief determines whether to ignore new line characters in docstrings
      */
-    doc_formatting& ignore_newline_chars(bool yes = true) {
+    tdoc_formatting& ignore_newline_chars(bool yes = true) {
         ignoreNewlines_ = yes;
         return *this;
     }
@@ -5664,26 +5838,26 @@ public:
     }
 
 private:
-    string paramSep_      = string(" ");
-    string groupSep_      = string(" ");
-    string altParamSep_   = string("|");
-    string altGroupSep_   = string(" | ");
-    string flagSep_       = string(", ");
-    string labelPre_      = string("<");
-    string labelPst_      = string(">");
-    string optionPre_     = string("[");
-    string optionPst_     = string("]");
-    string repeatPre_     = string("");
-    string repeatPst_     = string("...");
-    string groupPre_      = string("(");
-    string groupPst_      = string(")");
-    string alternPre_     = string("(");
-    string alternPst_     = string(")");
-    string alternFlagPre_ = string("");
-    string alternFlagPst_ = string("");
-    string joinablePre_   = string("(");
-    string joinablePst_   = string(")");
-    string emptyLabel_    = string("");
+    string paramSep_      = strings<Char>::paramSep;
+    string groupSep_      = strings<Char>::groupSep;
+    string altParamSep_   = strings<Char>::altParamSep;
+    string altGroupSep_   = strings<Char>::altGroupSep;
+    string flagSep_       = strings<Char>::flagSep;
+    string labelPre_      = strings<Char>::labelPre;
+    string labelPst_      = strings<Char>::labelPst;
+    string optionPre_     = strings<Char>::optionPre;
+    string optionPst_     = strings<Char>::optionPst;
+    string repeatPre_     = strings<Char>::repeatPre;
+    string repeatPst_     = strings<Char>::repeatPst;
+    string groupPre_      = strings<Char>::groupPre;
+    string groupPst_      = strings<Char>::groupPst;
+    string alternPre_     = strings<Char>::alternPre;
+    string alternPst_     = strings<Char>::alternPst;
+    string alternFlagPre_ = strings<Char>::alternFlagPre;
+    string alternFlagPst_ = strings<Char>::alternFlagPst;
+    string joinablePre_   = strings<Char>::joinablePre;
+    string joinablePst_   = strings<Char>::joinablePst;
+    string emptyLabel_    = strings<Char>::emptyLabel;
     int firstCol_ = 8;
     int docCol_ = 20;
     int lastCol_ = 100;
@@ -5709,7 +5883,7 @@ namespace detail {
  *        that applies formatting like line wrapping
  *
  *****************************************************************************/
-template<class OStream = std::ostream, class StringT = doc_string>
+template<typename Char, class OStream = std::basic_ostream<Char>, class StringT = doc_tstring<Char>>
 class formatting_ostream
 {
 public:
@@ -5910,13 +6084,13 @@ private:
     /** @brief write any object */
     template<class T>
     void write(const T& x) {
-        std::ostringstream ss;
+        std::basic_ostringstream<Char> ss;
         ss << x;
         write(std::move(ss).str());
     }
 
     /** @brief write a stringstream */
-    void write(const std::ostringstream& s) {
+    void write(const std::basic_ostringstream<Char>& s) {
         write(s.str());
     }
 
@@ -6036,20 +6210,21 @@ private:
  * @details lazily evaluated
  *
  *****************************************************************************/
+template<typename Char>
 class usage_lines
 {
 public:
-    using string = doc_string;
+    using string = doc_tstring<Char>;
 
-    usage_lines(const group& cli, string prefix = "",
-                const doc_formatting& fmt = doc_formatting{})
+    usage_lines(const tgroup<Char>& cli, string prefix = string{},
+                const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{})
     :
         cli_(cli), fmt_(fmt), prefix_(std::move(prefix))
     {
         if(!prefix_.empty()) prefix_ += ' ';
     }
 
-    usage_lines(const group& cli, const doc_formatting& fmt):
+    usage_lines(const tgroup<Char>& cli, const tdoc_formatting<Char>& fmt):
         usage_lines(cli, "", fmt)
     {}
 
@@ -6068,25 +6243,25 @@ public:
     }
 
     string str() const {
-        std::ostringstream os; os << *this; return os.str();
+        std::basic_ostringstream<Char> os; os << *this; return os.str();
     }
 
 
 private:
-    using stream_t = detail::formatting_ostream<>;
-    const group& cli_;
-    doc_formatting fmt_;
+    using stream_t = detail::formatting_ostream<Char>;
+    const tgroup<Char>& cli_;
+    tdoc_formatting<Char> fmt_;
     string prefix_;
     bool ommitOutermostSurrounders_ = false;
 
 
     //-----------------------------------------------------
     struct context {
-        group::depth_first_traverser pos;
+        typename tgroup<Char>::depth_first_traverser pos;
         std::stack<string> separators;
         std::stack<string> postfixes;
         int level = 0;
-        const group* outermost = nullptr;
+        const tgroup<Char>* outermost = nullptr;
         bool linestart = false;
         bool useOutermost = true;
         int line = 0;
@@ -6108,7 +6283,7 @@ private:
     template<class OStream>
     void write(OStream& os) const
     {
-        detail::formatting_ostream<OStream> fos(os);
+        detail::formatting_ostream<Char, OStream> fos(os);
         fos.first_column(fmt_.first_column());
         fos.last_column(fmt_.last_column());
 
@@ -6144,14 +6319,14 @@ private:
     {
         if(!cur.pos) return;
 
-        std::ostringstream buf;
+        std::basic_ostringstream<Char> buf;
         if(cur.linestart) buf << prefix;
         const auto initPos = buf.tellp();
 
         cur.level = cur.pos.level();
 
         if(cur.useOutermost) {
-            //we cannot start outside of the outermost group
+            //we cannot start outside of the outermost tgroup
             //so we have to treat it separately
             start_group(buf, cur.pos.parent(), cur);
             if(!cur.pos) {
@@ -6194,18 +6369,18 @@ private:
      *        and alternative splitting
      *
      *******************************************************************/
-    void start_group(std::ostringstream& os,
-                     const group& group, context& cur) const
+    void start_group(std::basic_ostringstream<Char>& os,
+                     const tgroup<Char>& group, context& cur) const
     {
-        //does cur.pos already point to a member or to group itself?
-        //needed for special treatment of outermost group
+        //does cur.pos already point to a member or to tgroup itself?
+        //needed for special treatment of outermost tgroup
         const bool alreadyInside = &(cur.pos.parent()) == &group;
 
         auto lbl = joined_label(group, cur);
         if(!lbl.empty()) {
             os << lbl;
             cur.linestart = false;
-            //skip over entire group as its label has already been created
+            //skip over entire tgroup as its label has already been created
             if(alreadyInside) {
                 cur.pos.next_after_siblings();
             } else {
@@ -6216,7 +6391,7 @@ private:
             const bool splitAlternatives = group.exclusive() &&
                 fmt_.split_alternatives() &&
                 std::any_of(group.begin(), group.end(),
-                    [this](const pattern& p) {
+                    [this](const tpattern<Char>& p) {
                         return int(p.param_count()) >= fmt_.alternatives_min_split_size();
                     });
 
@@ -6224,13 +6399,13 @@ private:
                 cur.postfixes.push("");
                 cur.separators.push("");
                 //recursively print alternative paths in decision-DAG
-                //enter group?
+                //enter tgroup?
                 if(!alreadyInside) ++cur.pos;
                 cur.linestart = true;
                 cur.useOutermost = false;
                 auto pfx = os.str();
                 os.str("");
-                //print paths in DAG starting at each group member
+                //print paths in DAG starting at each tgroup member
                 for(std::size_t i = 0; i < group.size(); ++i) {
                     std::stringstream buf;
                     cur.outermost = cur.pos->is_group() ? &(cur.pos->as_group()) : nullptr;
@@ -6256,7 +6431,7 @@ private:
                 os << surround.first;
                 cur.postfixes.push(std::move(surround.second));
                 cur.separators.push(group_separator(group, fmt_));
-                //descend into group?
+                //descend into tgroup?
                 if(!alreadyInside) ++cur.pos;
             }
         }
@@ -6267,7 +6442,7 @@ private:
     /***************************************************************//**
      *
      *******************************************************************/
-    void check_end_group(std::ostringstream& os, context& cur) const
+    void check_end_group(std::basic_ostringstream<Char>& os, context& cur) const
     {
         for(; cur.level > cur.pos.level(); --cur.level) {
             os << cur.postfixes.top();
@@ -6283,7 +6458,7 @@ private:
      * @brief makes usage label for one command line parameter
      *
      *******************************************************************/
-    string param_label(const parameter& p, const context& cur) const
+    string param_label(const tparameter<Char>& p, const context& cur) const
     {
         const auto& parent = cur.pos.parent();
 
@@ -6350,13 +6525,13 @@ private:
      * @brief prints flags in one group in a merged fashion
      *
      *******************************************************************/
-    string joined_label(const group& g, const context& cur) const
+    string joined_label(const tgroup<Char>& g, const context& cur) const
     {
         if(!fmt_.merge_alternative_flags_with_common_prefix() &&
            !fmt_.merge_joinable_with_common_prefix()) return "";
 
         const bool flagsonly = std::all_of(g.begin(), g.end(),
-            [](const pattern& p){
+            [](const tpattern<Char>& p){
                 return p.is_param() && !p.as_param().flags().empty();
             });
 
@@ -6394,7 +6569,7 @@ private:
             fmt_.merge_joinable_with_common_prefix())
         {
             const bool allSingleChar = std::all_of(g.begin(), g.end(),
-                [&](const pattern& p){
+                [&](const tpattern<Char>& p){
                     return p.is_param() &&
                         p.as_param().flags().front().substr(n).size() == 1;
                 });
@@ -6422,7 +6597,7 @@ private:
      *
      *******************************************************************/
     std::pair<string,string>
-    group_surrounders(const group& group, const context& cur) const
+    group_surrounders(const tgroup<Char>& group, const context& cur) const
     {
         string prefix;
         string postfix;
@@ -6483,10 +6658,10 @@ private:
      *
      *******************************************************************/
     static string
-    group_separator(const group& group, const doc_formatting& fmt)
+    group_separator(const tgroup<Char>& group, const tdoc_formatting<Char>& fmt)
     {
         const bool only1ParamPerMember = std::all_of(group.begin(), group.end(),
-            [](const pattern& p) { return p.param_count() < 2; });
+            [](const tpattern<Char>& p) { return p.param_count() < 2; });
 
         if(only1ParamPerMember) {
             if(group.exclusive()) {
@@ -6495,7 +6670,7 @@ private:
                 return fmt.param_separator();
             }
         }
-        else { //there is at least one large group inside
+        else { //there is at least one large tgroup inside
             if(group.exclusive()) {
                 return fmt.alternative_group_separator();
             } else {
@@ -6515,15 +6690,16 @@ private:
  * @details lazily evaluated
  *
  *****************************************************************************/
-class documentation
+template<typename Char>
+class tdocumentation
 {
 public:
-    using string          = doc_string;
-    using filter_function = std::function<bool(const parameter&)>;
+    using string          = doc_tstring<Char>;
+    using filter_function = std::function<bool(const tparameter<Char>&)>;
 
-    documentation(const group& cli,
-                  const doc_formatting& fmt = doc_formatting{},
-                  filter_function filter = param_filter{})
+    tdocumentation(const tgroup<Char>& cli,
+                   const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{},
+                   filter_function filter = paramf<Char>{})
     :
         cli_(cli), fmt_{fmt}, usgFmt_{fmt}, filter_{std::move(filter)}
     {
@@ -6533,34 +6709,34 @@ public:
             usgFmt_.max_flags_per_param_in_doc());
     }
 
-    documentation(const group& cli, filter_function filter) :
-        documentation{cli, doc_formatting{}, std::move(filter)}
+    tdocumentation(const tgroup<Char>& cli, filter_function filter) :
+        tdocumentation{cli, tdoc_formatting<Char>{}, std::move(filter)}
     {}
 
-    documentation(const group& cli, const param_filter& filter) :
-        documentation{cli, doc_formatting{},
-                      [filter](const parameter& p) { return filter(p); }}
+    tdocumentation(const tgroup<Char>& cli, const paramf<Char>& filter) :
+        tdocumentation{cli, tdoc_formatting<Char>{},
+                      [filter](const tparameter<Char>& p) { return filter(p); }}
     {}
 
     template<class OStream>
-    inline friend OStream& operator << (OStream& os, const documentation& p) {
+    inline friend OStream& operator << (OStream& os, const tdocumentation<Char>& p) {
         p.write(os);
         return os;
     }
 
     string str() const {
-        std::ostringstream os;
+        std::basic_ostringstream<Char> os;
         write(os);
         return os.str();
     }
 
 
 private:
-    using dfs_traverser = group::depth_first_traverser;
+    using dfs_traverser = typename tgroup<Char>::depth_first_traverser;
 
-    const group& cli_;
-    doc_formatting fmt_;
-    doc_formatting usgFmt_;
+    const tgroup<Char>& cli_;
+    tdoc_formatting<Char> fmt_;
+    tdoc_formatting<Char> usgFmt_;
     filter_function filter_;
     enum class paragraph { param, group };
 
@@ -6572,7 +6748,7 @@ private:
      *******************************************************************/
      template<class OStream>
      void write(OStream& os) const {
-        detail::formatting_ostream<OStream> fos(os);
+        detail::formatting_ostream<Char, OStream> fos(os);
         fos.first_column(fmt_.first_column());
         fos.last_column(fmt_.last_column());
         fos.hanging_indent(0);
@@ -6587,30 +6763,30 @@ private:
      * @brief writes full documentation text for command line parameters
      *
      *******************************************************************/
-    template<class OStream>
-    void print_doc(detail::formatting_ostream<OStream>& os,
-                   const group& cli, int indentLvl = 0) const
+    template<typename Char, class OStream>
+    void print_doc(detail::formatting_ostream<Char, OStream>& os,
+                   const tgroup<Char>& cli, int indentLvl = 0) const
     {
         if(cli.empty()) return;
 
-        //if group itself doesn't have docstring
+        //if tgroup itself doesn't have docstring
         if(cli.doc().empty()) {
             for(const auto& p : cli) {
                 print_doc(os, p, indentLvl);
             }
         }
-        else { //group itself does have docstring
+        else { //tgroup itself does have docstring
             bool anyDocInside = std::any_of(cli.begin(), cli.end(),
-                [](const pattern& p){ return !p.doc().empty(); });
+                [](const tpattern<Char>& p){ return !p.doc().empty(); });
 
-            if(anyDocInside) { //group docstring as title, then child entries
+            if(anyDocInside) { //tgroup docstring as title, then child entries
                 handle_spacing(os, paragraph::group, indentLvl);
                 os << cli.doc();
                 for(const auto& p : cli) {
                     print_doc(os, p, indentLvl + 1);
                 }
             }
-            else { //group label first then group docstring
+            else { //tgroup label first then tgroup docstring
                 auto lbl = usage_lines(cli, usgFmt_)
                            .ommit_outermost_group_surrounders(true).str();
 
@@ -6628,8 +6804,8 @@ private:
      *
      *******************************************************************/
     template<class OStream>
-    void print_doc(detail::formatting_ostream<OStream>& os,
-                   const pattern& ptrn, int indentLvl) const
+    void print_doc(detail::formatting_ostream<Char, OStream>& os,
+                   const tpattern<Char>& ptrn, int indentLvl) const
     {
         if(ptrn.is_group()) {
             print_doc(os, ptrn.as_group(), indentLvl);
@@ -6649,7 +6825,7 @@ private:
      *
      *******************************************************************/
     template<class OStream>
-    void handle_spacing(detail::formatting_ostream<OStream>& os,
+    void handle_spacing(detail::formatting_ostream<Char, OStream>& os,
                         paragraph p, int indentLvl) const
     {
         const auto oldIndent = os.first_column();
@@ -6683,7 +6859,7 @@ private:
      *
      ************************************************************************/
     template<class OStream>
-    void print_entry(detail::formatting_ostream<OStream>& os,
+    void print_entry(detail::formatting_ostream<Char, OStream>& os,
                      const string& label, const string& docstr) const
     {
         if(label.empty()) return;
@@ -6705,10 +6881,10 @@ private:
      * @brief makes label for one parameter
      *
      ************************************************************************/
-    static doc_string
-    param_label(const parameter& param, const doc_formatting& fmt)
+    static doc_tstring<Char>
+    param_label(const tparameter<Char>& param, const tdoc_formatting<Char>& fmt)
     {
-        doc_string lbl;
+        doc_tstring<Char> lbl;
 
         if(param.repeatable()) lbl += fmt.repeat_prefix();
 
@@ -6746,17 +6922,18 @@ private:
  * @brief stores strings for man page sections
  *
  *****************************************************************************/
+template<typename Char>
 class man_page
 {
 public:
     //---------------------------------------------------------------
-    using string = doc_string;
+    using string = doc_tstring<Char>;
 
     //---------------------------------------------------------------
     /** @brief man page section */
     class section {
     public:
-        using string = doc_string;
+        using string = doc_tstring<Char>;
 
         section(string stitle, string scontent):
             title_{std::move(stitle)}, content_{std::move(scontent)}
@@ -6775,9 +6952,9 @@ private:
 
 public:
     //---------------------------------------------------------------
-    using value_type     = section;
-    using const_iterator = section_store::const_iterator;
-    using size_type      = section_store::size_type;
+    using value_type     = typename section;
+    using const_iterator = typename section_store::const_iterator;
+    using size_type      = typename section_store::size_type;
 
 
     //---------------------------------------------------------------
@@ -6841,22 +7018,21 @@ private:
     string progName_;
 };
 
-
-
 /*************************************************************************//**
  *
  * @brief generates man sections from command line parameters
  *        with sections "synopsis" and "options"
  *
  *****************************************************************************/
-inline man_page
-make_man_page(const group& cli,
-              doc_string progname = "",
-              const doc_formatting& fmt = doc_formatting{})
+template<typename Char>
+inline man_page<Char>
+make_man_page(const tgroup<Char>& cli,
+              doc_tstring<Char> progname = "",
+              const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{})
 {
-    man_page man;
-    man.append_section("SYNOPSIS", usage_lines(cli,progname,fmt).str());
-    man.append_section("OPTIONS", documentation(cli,fmt).str());
+    man_page<Char> man;
+    man.append_section(strings<Char>::SYNOPSIS, usage_lines(cli,progname,fmt).str());
+    man.append_section(strings<Char>::OPTIONS, tdocumentation(cli,fmt).str());
     return man;
 }
 
@@ -6867,20 +7043,20 @@ make_man_page(const group& cli,
  * @brief   generates man page based on command line parameters
  *
  *****************************************************************************/
-template<class OStream>
+template<typename Char, class OStream>
 OStream&
-operator << (OStream& os, const man_page& man)
+operator << (OStream& os, const man_page<Char>& man)
 {
     bool first = true;
-    const auto secSpc = doc_string(man.section_row_spacing() + 1, '\n');
+    const auto secSpc = doc_tstring<Char>(man.section_row_spacing() + 1, Char('\n'));
     for(const auto& section : man) {
         if(!section.content().empty()) {
             if(first) first = false; else os << secSpc;
-            if(!section.title().empty()) os << section.title() << '\n';
+            if(!section.title().empty()) os << section.title() << Char('\n');
             os << section.content();
         }
     }
-    os << '\n';
+    os << Char('\n');
     return os;
 }
 
@@ -6895,25 +7071,27 @@ operator << (OStream& os, const man_page& man)
  *****************************************************************************/
 namespace debug {
 
-
 /*************************************************************************//**
  *
  * @brief prints first flag or value label of a parameter
  *
  *****************************************************************************/
-inline doc_string doc_label(const parameter& p)
+template<typename Char>
+inline doc_tstring<Char> doc_label(const tparameter<Char>& p)
 {
     if(!p.flags().empty()) return p.flags().front();
     if(!p.label().empty()) return p.label();
-    return doc_string{"<?>"};
+    return doc_tstring<Char>{strings<Char>::questionMark};
 }
 
-inline doc_string doc_label(const group&)
+template<typename Char>
+inline doc_tstring<Char> doc_label(const tgroup<Char>&)
 {
-    return "<group>";
+    return strings<Char>::tgroup;
 }
 
-inline doc_string doc_label(const pattern& p)
+template<typename Char>
+inline doc_tstring<Char> doc_label(const tpattern<Char>& p)
 {
     return p.is_group() ? doc_label(p.as_group()) : doc_label(p.as_param());
 }
@@ -6924,32 +7102,31 @@ inline doc_string doc_label(const pattern& p)
  * @brief prints parsing result
  *
  *****************************************************************************/
-template<class OStream>
-void print(OStream& os, const parsing_result& result)
+template<typename Char, class OStream>
+void print(OStream& os, const tparsing_result<Char>& result)
 {
     for(const auto& m : result) {
-        os << "#" << m.index() << " " << m.arg() << " -> ";
+        os << Char('#') << m.index() << Char(' ') << m.arg() << strings<Char>::arrow;
         auto p = m.param();
         if(p) {
-            os << doc_label(*p) << " \t";
+            os << doc_label(*p) << strings<Char>::spTab;
             if(m.repeat() > 0) {
-                os << (m.bad_repeat() ? "[bad repeat " : "[repeat ")
-                   <<  m.repeat() << "]";
+                os << (m.bad_repeat() ? strings<Char>::badRepeat : strings<Char>::repeat)
+                   <<  m.repeat() << Char(']');
             }
-            if(m.blocked())  os << " [blocked]";
-            if(m.conflict()) os << " [conflict]";
-            os << '\n';
+            if(m.blocked())  os << strings<Char>::blocked;
+            if(m.conflict()) os << strings<Char>::conflict;
+            os << Char('\n');
         }
         else {
-            os << " [unmapped]\n";
+            os << strings<Char>::unmapped;
         }
     }
-
     for(const auto& m : result.missing()) {
         auto p = m.param();
         if(p) {
-            os << doc_label(*p) << " \t";
-            os << " [missing after " << m.after_index() << "]\n";
+            os << doc_label(*p) << strings<Char>::spTab;
+            os << strings<Char>::missingAfter << m.after_index() << Char(']') << Char('\n');
         }
     }
 }
@@ -6960,21 +7137,21 @@ void print(OStream& os, const parsing_result& result)
  * @brief prints parameter label and some properties
  *
  *****************************************************************************/
-template<class OStream>
-void print(OStream& os, const parameter& p)
+template<typename Char, class OStream>
+void print(OStream& os, const tparameter<Char>& p)
 {
-    if(p.greedy()) os << '!';
-    if(p.blocking()) os << '~';
-    if(!p.required()) os << '[';
+    if(p.greedy()) os << Char('!');
+    if(p.blocking()) os << Char('~');
+    if(!p.required()) os << Char('[');
     os << doc_label(p);
-    if(p.repeatable()) os << "...";
-    if(!p.required()) os << "]";
+    if(p.repeatable()) os << strings<Char>::triDot;
+    if(!p.required()) os << Char(']');
 }
 
 
 //-------------------------------------------------------------------
-template<class OStream>
-void print(OStream& os, const group& g, int level = 0);
+template<typename Char, class OStream>
+void print(OStream& os, const tgroup<Char>& g, int level = 0);
 
 
 /*************************************************************************//**
@@ -6982,14 +7159,14 @@ void print(OStream& os, const group& g, int level = 0);
  * @brief prints group or parameter; uses indentation
  *
  *****************************************************************************/
-template<class OStream>
-void print(OStream& os, const pattern& param, int level = 0)
+template<typename Char, class OStream>
+void print(OStream& os, const tpattern<Char>& param, int level = 0)
 {
     if(param.is_group()) {
         print(os, param.as_group(), level);
     }
     else {
-        os << doc_string(4*level, ' ');
+        os << doc_tstring<Char>(4*level, Char(' '));
         print(os, param.as_param());
     }
 }
@@ -7000,25 +7177,423 @@ void print(OStream& os, const pattern& param, int level = 0)
  * @brief prints group and its contents; uses indentation
  *
  *****************************************************************************/
-template<class OStream>
-void print(OStream& os, const group& g, int level)
+template<typename Char, class OStream>
+void print(OStream& os, const tgroup<Char>& g, int level)
 {
-    auto indent = doc_string(4*level, ' ');
+    auto const indent = doc_tstring<Char>(4*level, Char(' '));
     os << indent;
-    if(g.blocking()) os << '~';
-    if(g.joinable()) os << 'J';
-    os << (g.exclusive() ? "(|\n" : "(\n");
+    if(g.blocking()) os << Char('~');
+    if(g.joinable()) os << Char('J');
+    Char const headExcl[]{Char('('), Char('|'), Char('\n')};
+    Char const     head[]{Char('('), Char('\n')};
+    os << (g.exclusive() ? headExcl : head);
     for(const auto& p : g) {
-        print(os, p, level+1);
+        print<Char, OStream>(os, p, level+1);
     }
-    os << '\n' << indent << (g.exclusive() ? "|)" : ")");
+    Char const tailExcl[]{Char('|'), Char(')')};
+    Char const     tail[]{Char(')')};
+    os << Char('\n') << indent << (g.exclusive() ? tailExcl : tail);
     if(g.repeatable()) os << "...";
-    os << '\n';
+    os << Char('\n');
 }
 
 
 } // namespace debug
-} //namespace clipp
+
+using match_predicate = std::function<bool(const arg_string&)>;
+using  match_function = std::function<subrange(const arg_string&)>;
+using       parameter = tparameter<char>;
+using           group = tgroup<char>;
+using  parsing_result = tparsing_result<char>;
+using   documentation = tdocumentation<char>;
+using  doc_formatting = tdoc_formatting<char>;
+
+namespace match {
+
+inline bool          any(const arg_string& s) { return tany<char>(s); }
+inline bool         none(const arg_string& s) { return tnone<char>(s); }
+inline bool     nonempty(const arg_string& s) { return tnonempty<char>(s); }
+inline bool alphanumeric(const arg_string& s) { return talphanumeric<char>(s); }
+inline bool   alphabetic(const arg_string& s) { return talphabetic<char>(s); }
+
+using           none_of = tnone_of<char>;
+using           numbers = tnumbers<char>;
+using          integers = tintegers<char>;
+using positive_integers = tpositive_integers<char>;
+using         substring = tsubstring<char>;
+using            prefix = tprefix<char>;
+using        prefix_not = tprefix_not<char>;
+using          noprefix = prefix_not;
+
+} // namespace match
+
+template<class String, class... Strings>
+inline parameter
+command(String&& flag, Strings&&... flags)
+{
+    return tcommand<char>(std::forward<String>(flag), std::forward<Strings>(flags)...);
+}
+
+template<class String, class... Strings>
+inline parameter
+required(String&& flag, Strings&&... flags)
+{
+    return trequired<char>(std::forward<String>(flag), std::forward<Strings>(flags)...);
+}
+
+template<class String, class... Strings>
+inline parameter
+option(String&& flag, Strings&&... flags)
+{
+    return toption<char>(std::forward<String>(flag), std::forward<Strings>(flags)...);
+}
+
+template<class... Targets>
+inline parameter
+value(const doc_string& label, Targets&&... tgts)
+{
+    return tvalue<char>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class Filter, class... Targets>
+inline parameter
+valuef(Filter&& filter, const doc_string& label, Targets&&... tgts)
+{
+    return tvaluef<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+values(const doc_string& label, Targets&&... tgts)
+{
+    return tvalues<char>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class Filter, class... Targets>
+inline parameter
+valuesf(Filter&& filter, const doc_string& label, Targets&&... tgts)
+{
+    return tvaluesf<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_value(const doc_string& label, Targets&&... tgts)
+{
+    return topt_value<char>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class Filter, class... Targets>
+inline parameter
+opt_valuef(Filter&& filter, const doc_string& label, Targets&&... tgts)
+{
+    return topt_valuef<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_values(const doc_string& label, Targets&&... tgts)
+{
+    return topt_values<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class Filter, class... Targets>
+inline parameter
+opt_valuesf(Filter&& filter, const doc_string& label, Targets&&... tgts)
+{
+    return topt_valuesf<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+word(const doc_string& label, Targets&&... tgts)
+{
+    return tword<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+words(const doc_string& label, Targets&&... tgts)
+{
+    return twords<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_word(const doc_string& label, Targets&&... tgts)
+{
+    return topt_word<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_words(const doc_string& label, Targets&&... tgts)
+{
+    return topt_words<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+number(const doc_string& label, Targets&&... tgts)
+{
+    return tnumber<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+numbers(const doc_string& label, Targets&&... tgts)
+{
+    return tnumbers<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_number(const doc_string& label, Targets&&... tgts)
+{
+    return topt_number<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_numbers(const doc_string& label, Targets&&... tgts)
+{
+    return topt_numbers<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+integer(const doc_string& label, Targets&&... tgts)
+{
+    return tinteger<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+integers(const doc_string& label, Targets&&... tgts)
+{
+    return tintegers<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_integer(const doc_string& label, Targets&&... tgts)
+{
+    return topt_integer<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+opt_integers(const doc_string& label, Targets&&... tgts)
+{
+    return topt_integers<char, Targets...>(label, std::forward<Targets>(tgts)...);
+}
+
+template<class... Targets>
+inline parameter
+any_other(Targets&&... tgts)
+{
+    return tany_other<char, Targets...>(std::forward<Targets>(tgts)...);
+}
+
+template<class Filter, class... Targets>
+inline parameter
+any(Filter&& filter, Targets&&... tgts)
+{
+    return tany<char, Filter, Targets...>(std::forward<Filter>(filter), std::forward<Targets>(tgts)...);
+}
+
+inline parameter&&
+with_prefix(const arg_string& prefix, parameter&& p)
+{
+    return std::move(twith_prefix<char>(prefix, std::forward<parameter>(p)));
+}
+
+inline group&
+with_prefix(const arg_string& prefix, group& g)
+{
+    return twith_prefix<char>(prefix, g);
+}
+
+inline group&&
+with_prefix(const arg_string& prefix, group&& params)
+{
+    return std::move(twith_prefix<char>(prefix, std::forward<group>(params)));
+}
+
+template<class Param, class... Params>
+inline group
+with_prefix(const arg_string& prefix, Param&& param, Params&&... params)
+{
+    return twith_prefix<char, Param, Params...>(prefix, std::forward<Param>(param), std::forward<Params>(params)...);
+}
+
+inline parameter&&
+with_prefixes_short_long(const arg_string& shortpfx, const arg_string& longpfx,
+                         parameter&& p)
+{
+    return std::move(twith_prefixes_short_long<char>(shortpfx, longpfx, std::forward<parameter>(p)));
+}
+
+inline group&
+with_prefixes_short_long(const arg_string& shortFlagPrefix,
+                         const arg_string& longFlagPrefix,
+                         group& g)
+{
+    return twith_prefixes_short_long<char>(shortFlagPrefix, longFlagPrefix, g);
+}
+
+inline group&&
+with_prefixes_short_long(const arg_string& shortFlagPrefix,
+                         const arg_string& longFlagPrefix,
+                         group&& params)
+{
+    return std::move(twith_prefixes_short_long<char>(shortFlagPrefix, longFlagPrefix,
+                                                     std::forward<group>(params)));
+}
+
+template<class Param, class... Params>
+inline group
+with_prefixes_short_long(const arg_string& shortFlagPrefix,
+                         const arg_string& longFlagPrefix,
+                         Param&& param, Params&&... params)
+{
+    return twith_prefixes_short_long<char, Param, Params...>(shortFlagPrefix, longFlagPrefix,
+                                     std::forward<Param>(param),
+                                     std::forward<Params>(params)...);
+}
+
+inline parameter&&
+with_suffix(const arg_string& suffix, parameter&& p)
+{
+    return std::move(twith_suffix<char>(suffix, std::forward<parameter>(p)));
+}
+
+inline group&
+with_suffix(const arg_string& suffix, group& g)
+{
+    return twith_suffix<char>(suffix, g);
+}
+
+inline group&&
+with_suffix(const arg_string& suffix, group&& params)
+{
+    return std::move(twith_suffix<char>(suffix, std::forward<group>(params)));
+}
+
+template<class Param, class... Params>
+inline group
+with_suffix(arg_string suffix, Param&& param, Params&&... params)
+{
+    return twith_suffix<char, Param, Params...>(suffix,
+                                                std::forward<Param>(param),
+                                                std::forward<Params>(params)...);
+}
+
+inline parameter&&
+with_suffixes_short_long(const arg_string& shortsfx, const arg_string& longsfx,
+                         parameter&& p)
+{
+    return std::move(twith_suffixes_short_long<char>(shortsfx, longsfx,
+                                                     std::forward<parameter>(p)));
+}
+
+inline group&
+with_suffixes_short_long(const arg_string& shortFlagSuffix,
+                         const arg_string& longFlagSuffix,
+                         group& g)
+{
+    return twith_suffixes_short_long<char>(shortFlagSuffix, longFlagSuffix, g);
+}
+
+inline group&&
+with_suffixes_short_long(const arg_string& shortFlagSuffix,
+                         const arg_string& longFlagSuffix,
+                         group&& params)
+{
+    return std::move(twith_suffixes_short_long<char>(shortFlagSuffix, longFlagSuffix,
+                                                     std::forward<group>(params)));
+}
+
+
+template<class Param, class... Params>
+inline group
+with_suffixes_short_long(const arg_string& shortFlagSuffix,
+                         const arg_string& longFlagSuffix,
+                         Param&& param, Params&&... params)
+{
+    return twith_suffixes_short_long<char, Param, Params...>(shortFlagSuffix, longFlagSuffix,
+                                                             std::forward<Param>(param),
+                                                             std::forward<Params>(params)...);
+}
+
+namespace detail {
+
+template<class T> inline T&  operator % (doc_string docstr, token<char, T>&  p) { return p.doc(std::move(docstr)); }
+template<class T> inline T&& operator % (doc_string docstr, token<char, T>&& p) { return std::move(p.doc(std::move(docstr))); }
+template<class T> inline T&  operator % (token<char, T>&  p, doc_string docstr) { return p.doc(std::move(docstr)); }
+template<class T> inline T&& operator % (token<char, T>&& p, doc_string docstr) { return std::move(p.doc(std::move(docstr))); }
+
+} // namespace detail
+
+inline group joinable(group g)
+{
+    return tjoinable<char>(g);
+}
+
+template<class... Params>
+inline group
+joinable(parameter param, Params... params)
+{
+    return tjoinable<char, Params...>(std::move(param), std::move(params)...); 
+}
+
+template<class P2, class... Ps>
+inline group
+joinable(group p1, P2 p2, Ps... ps)
+{
+    return tjoinable<char, P2, Ps...>(std::move(p1), std::move(p2), std::move(ps)...);
+}
+
+template<class Param, class... Params>
+inline group
+joinable(doc_string docstr, Param param, Params... params)
+{
+    return tjoinable<char, Param, Params...>(std::move(docstr), std::move(param), std::move(params)...);
+}
+
+inline parameter 
+repeatable(parameter p)
+{
+    return trepeatable<char>(p); 
+}
+
+inline group
+repeatable(group g)
+{
+    return trepeatable<char>(g);
+}
+
+template<class P2, class... Ps>
+inline group
+repeatable(parameter p1, P2 p2, Ps... ps)
+{
+    return trepeatable<char, P2, Ps...>(std::move(p1), std::move(p2), std::move(ps)...);
+}
+
+template<class P2, class... Ps>
+inline group
+repeatable(group p1, P2 p2, Ps... ps)
+{
+    return trepeatable<char, P2, Ps...>(std::move(p1), std::move(p2), std::move(ps)...);
+}
+
+template<class Param, class... Params>
+inline group
+in_sequence(Param param, Params... params)
+{
+    return tin_sequence<char, Param, Params...>(std::move(param), std::move(params)...);
+}
+
+} // namespace clipp
 
 #endif
-

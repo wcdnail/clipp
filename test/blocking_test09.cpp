@@ -46,7 +46,7 @@ void test(int lineNo,
 
     auto cli = (
         value("file", m.f),
-        required("-t") & values(match::prefix_not("-"), "target", m.tgts),
+        required("-t") & valuesf(match::prefix_not("-"), "target", m.tgts),
         option("--http").set(m.http) | option("--ftp").set(m.ftp),
         any_other(m.wrong)
     );

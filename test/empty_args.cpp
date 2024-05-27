@@ -38,7 +38,7 @@ void test_empty(int lineNo,
 
     active m;
     auto cli = (
-      option("-o", "--opt").set(m.o) & value(match::any, "O", m.ov),
+      option("-o", "--opt").set(m.o) & valuef(match::any, "O", m.ov),
       value("P", m.pv)
     );
 
@@ -58,7 +58,7 @@ void test_nonempty(int lineNo,
 
     active m;
     auto cli = (
-      option("-o", "--opt").set(m.o) & value(match::nonempty, "O", m.ov),
+      option("-o", "--opt").set(m.o) & valuef(match::nonempty, "O", m.ov),
       value("P", m.pv)
     );
 
