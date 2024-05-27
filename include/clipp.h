@@ -478,7 +478,7 @@ template<typename Char>
 struct make<Char, unsigned char> {
     static inline unsigned char from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned char>(std::strtoull(s,nullptr,10));
+        return clamped_on_limits<unsigned char>(str_convert<Char, unsigned char>(s));
     }
 };
 
@@ -486,7 +486,7 @@ template<typename Char>
 struct make<Char, unsigned short int> {
     static inline unsigned short int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned short int>(std::strtoull(s,nullptr,10));
+        return clamped_on_limits<unsigned short int>(str_convert<Char, unsigned short int>(s));
     }
 };
 
@@ -494,7 +494,7 @@ template<typename Char>
 struct make<Char, unsigned int> {
     static inline unsigned int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned int>(std::strtoull(s,nullptr,10));
+        return clamped_on_limits<unsigned int>(str_convert<Char, unsigned int>(s));
     }
 };
 
@@ -502,7 +502,7 @@ template<typename Char>
 struct make<Char, unsigned long int> {
     static inline unsigned long int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned long int>(std::strtoull(s,nullptr,10));
+        return clamped_on_limits<unsigned long int>(str_convert<Char, unsigned long int>(s));
     }
 };
 
@@ -510,7 +510,7 @@ template<typename Char>
 struct make<Char, unsigned long long int> {
     static inline unsigned long long int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned long long int>(std::strtoull(s,nullptr,10));
+        return clamped_on_limits<unsigned long long int>(str_convert<Char, unsigned long long>(s));
     }
 };
 
@@ -787,7 +787,7 @@ namespace str {
  *
  *****************************************************************************/
 template<typename Char, class T>
-T make(const arg_tstring<Char>& s)
+T make(const std::basic_string<Char>& s)
 {
     return detail::make<Char, T>::from(s);
 }
@@ -799,15 +799,15 @@ T make(const arg_tstring<Char>& s)
  * @brief removes trailing whitespace from string
  *
  *****************************************************************************/
-template<class C, class T, class A>
+template<class C>
 inline void
-trimr(std::basic_string<C,T,A>& s)
+trimr(std::basic_string<C>& s)
 {
     if(s.empty()) return;
 
     s.erase(
         std::find_if_not(s.rbegin(), s.rend(),
-                         [](char c) { return std::isspace(c);} ).base(),
+                         [](C c) { return std::isspace(c);} ).base(),
         s.end() );
 }
 
@@ -817,16 +817,16 @@ trimr(std::basic_string<C,T,A>& s)
  * @brief removes leading whitespace from string
  *
  *****************************************************************************/
-template<class C, class T, class A>
+template<class C>
 inline void
-triml(std::basic_string<C,T,A>& s)
+triml(std::basic_string<C>& s)
 {
     if(s.empty()) return;
 
     s.erase(
         s.begin(),
         std::find_if_not(s.begin(), s.end(),
-                         [](char c) { return std::isspace(c);})
+                         [](C c) { return std::isspace(c);})
     );
 }
 
@@ -5892,13 +5892,13 @@ namespace detail {
  *        that applies formatting like line wrapping
  *
  *****************************************************************************/
-template<typename Char, class OStream = std::basic_ostream<Char>, class StringT = doc_tstring<Char>>
+template<typename Char, class OStream = std::basic_ostream<Char>, class StringT = std::basic_string<Char>>
 class formatting_ostream
 {
 public:
     using string_type = StringT;
     using size_type   = typename string_type::size_type;
-    using char_type   = typename string_type::value_type;
+    using char_type   = Char;
 
     formatting_ostream(OStream& os):
         os_(os),
@@ -6162,7 +6162,7 @@ private:
             if(breakat > first) {
                 if(curCol_ < 1) ++totalNonBlankLines_;
                 fix_indent();
-                std::copy(first, breakat, std::ostream_iterator<char_type>(os_));
+                std::copy(first, breakat, std::ostream_iterator<char_type, char_type>(os_));
                 curBlankLines_ = 0;
             }
             if(breakat < last) {
@@ -6173,7 +6173,7 @@ private:
         else {
             if(curCol_ < 1) ++totalNonBlankLines_;
             fix_indent();
-            std::copy(first, last, std::ostream_iterator<char_type>(os_));
+            std::copy(first, last, std::ostream_iterator<char_type, char_type>(os_));
             curCol_ += n;
             curBlankLines_ = 0;
         }
@@ -6230,11 +6230,11 @@ public:
     :
         cli_(cli), fmt_(fmt), prefix_(std::move(prefix))
     {
-        if(!prefix_.empty()) prefix_ += ' ';
+        if(!prefix_.empty()) prefix_ += Char(' ');
     }
 
     usage_lines(const tgroup<Char>& cli, const tdoc_formatting<Char>& fmt):
-        usage_lines(cli, "", fmt)
+        usage_lines(cli, {}, fmt)
     {}
 
     usage_lines& ommit_outermost_group_surrounders(bool yes) {
@@ -6405,28 +6405,28 @@ private:
                     });
 
             if(splitAlternatives) {
-                cur.postfixes.push("");
-                cur.separators.push("");
+                cur.postfixes.push({});
+                cur.separators.push({});
                 //recursively print alternative paths in decision-DAG
                 //enter tgroup?
                 if(!alreadyInside) ++cur.pos;
                 cur.linestart = true;
                 cur.useOutermost = false;
                 auto pfx = os.str();
-                os.str("");
+                os.str({});
                 //print paths in DAG starting at each tgroup member
                 for(std::size_t i = 0; i < group.size(); ++i) {
-                    std::stringstream buf;
+                    std::basic_stringstream<Char> buf;
                     cur.outermost = cur.pos->is_group() ? &(cur.pos->as_group()) : nullptr;
                     write(buf, cur, pfx);
                     if(buf.tellp() > int(pfx.size())) {
                         os << buf.str();
                         if(i < group.size()-1) {
                             if(cur.line > 0) {
-                                os << string(fmt_.line_spacing(), '\n');
+                                os << string(fmt_.line_spacing(), Char('\n'));
                             }
                             ++cur.line;
-                            os << '\n';
+                            os << Char('\n');
                         }
                     }
                     cur.pos.next_sibling(); //do not descend into members
@@ -6518,7 +6518,7 @@ private:
                      + fmt_.empty_label()
                      + fmt_.label_postfix();
              } else {
-                 return "";
+                 return {};
              }
         }
 
@@ -6537,20 +6537,20 @@ private:
     string joined_label(const tgroup<Char>& g, const context& cur) const
     {
         if(!fmt_.merge_alternative_flags_with_common_prefix() &&
-           !fmt_.merge_joinable_with_common_prefix()) return "";
+           !fmt_.merge_joinable_with_common_prefix()) return {};
 
         const bool flagsonly = std::all_of(g.begin(), g.end(),
             [](const tpattern<Char>& p){
                 return p.is_param() && !p.as_param().flags().empty();
             });
 
-        if(!flagsonly) return "";
+        if(!flagsonly) return {};
 
         const bool showOpt = g.all_optional() &&
             !(ommitOutermostSurrounders_ && cur.outermost == &g);
 
         auto pfx = g.common_flag_prefix();
-        if(pfx.empty()) return "";
+        if(pfx.empty()) return {};
 
         const auto n = pfx.size();
         if(g.exclusive() &&
@@ -6596,7 +6596,7 @@ private:
             }
         }
 
-        return "";
+        return {};
     }
 
 
@@ -6703,7 +6703,7 @@ template<typename Char>
 class tdocumentation
 {
 public:
-    using string          = doc_tstring<Char>;
+    using string          = std::basic_string<Char>;
     using filter_function = std::function<bool(const tparameter<Char>&)>;
 
     tdocumentation(const tgroup<Char>& cli,
@@ -6763,7 +6763,7 @@ private:
         fos.hanging_indent(0);
         fos.paragraph_spacing(0);
         fos.ignore_newline_chars(fmt_.ignore_newline_chars());
-        print_doc(fos, cli_);
+        print_doc<Char, OStream>(fos, cli_);
      }
 
 
@@ -6799,7 +6799,7 @@ private:
                 auto lbl = usage_lines(cli, usgFmt_)
                            .ommit_outermost_group_surrounders(true).str();
 
-                str::trim(lbl);
+                str::trim<Char>(lbl);
                 handle_spacing(os, paragraph::param, indentLvl);
                 print_entry(os, lbl, cli.doc());
             }
@@ -6936,13 +6936,13 @@ class man_page
 {
 public:
     //---------------------------------------------------------------
-    using string = doc_tstring<Char>;
+    using string = std::basic_string<Char>;
 
     //---------------------------------------------------------------
     /** @brief man page section */
     class section {
     public:
-        using string = doc_tstring<Char>;
+        using string = std::basic_string<Char>;
 
         section(string stitle, string scontent):
             title_{std::move(stitle)}, content_{std::move(scontent)}
@@ -7020,6 +7020,7 @@ public:
     }
     int section_row_spacing() const noexcept { return sectionSpc_; }
 
+    std::basic_string<Char> get_string() const;
 
 private:
     int sectionSpc_ = 1;
@@ -7036,12 +7037,12 @@ private:
 template<typename Char>
 inline man_page<Char>
 make_man_page(const tgroup<Char>& cli,
-              doc_tstring<Char> progname = "",
+              doc_tstring<Char> progname = {},
               const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{})
 {
     man_page<Char> man;
-    man.append_section(strings<Char>::SYNOPSIS, usage_lines(cli,progname,fmt).str());
-    man.append_section(strings<Char>::OPTIONS, tdocumentation(cli,fmt).str());
+    man.append_section(strings<Char>::SYNOPSIS, usage_lines<Char>(cli, progname,fmt).str());
+    man.append_section(strings<Char>::OPTIONS, tdocumentation<Char>(cli, fmt).str());
     return man;
 }
 
@@ -7069,6 +7070,13 @@ operator << (OStream& os, const man_page<Char>& man)
     return os;
 }
 
+template<typename Char>
+inline std::basic_string<Char> man_page<Char>::get_string() const
+{
+    std::basic_ostringstream<Char> stm;
+    stm << *this;
+    return stm.str();
+}
 
 
 
