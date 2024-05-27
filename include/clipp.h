@@ -162,7 +162,7 @@ template <typename Char>
 using doc_tstring = std::basic_string<Char>;
 
 template <typename Char>
-using arg_tlist = std::vector<arg_tstring<Char>>;
+using arg_tlist = std::vector<std::basic_string<Char>>;
 
 
 /*************************************************************************//**
@@ -443,6 +443,15 @@ inline T clamped_on_limits(const V& v) {
 
 
 
+template<typename Char, typename T>
+T str_convert(const Char* source)
+{
+    T temp{0};
+    std::basic_istringstream<Char> istm{source};
+    istm >> temp;
+    return temp;
+}
+
 /*************************************************************************//**
  *
  * @brief type conversion helpers
@@ -512,56 +521,56 @@ struct make<Char, char> {
         const auto n = std::strlen(s);
         if(n == 1) return s[0];
         //parse as integer
-        return clamped_on_limits<char>(std::strtoll(s,nullptr,10));
+        return clamped_on_limits<char>(str_convert<Char, char>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, short int> {
     static inline short int from(const Char* s) {
-        return clamped_on_limits<short int>(std::strtoll(s,nullptr,10));
+        return clamped_on_limits<short int>(str_convert<Char, short int>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, int> {
     static inline int from(const Char* s) {
-        return clamped_on_limits<int>(std::strtoll(s,nullptr,10));
+        return clamped_on_limits<int>(str_convert<Char, int>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, long int> {
     static inline long int from(const Char* s) {
-        return clamped_on_limits<long int>(std::strtoll(s,nullptr,10));
+        return clamped_on_limits<long int>(str_convert<Char, long int>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, long long int> {
     static inline long long int from(const Char* s) {
-        return (std::strtoll(s,nullptr,10));
+        return (str_convertstr_convert<Char, long long>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, float> {
     static inline float from(const Char* s) {
-        return (std::strtof(s,nullptr));
+        return (str_convert<Char, float>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, double> {
     static inline double from(const Char* s) {
-        return (std::strtod(s,nullptr));
+        return (str_convert<Char, double>(s));
     }
 };
 
 template<typename Char>
 struct make<Char, long double> {
     static inline long double from(const Char* s) {
-        return (std::strtold(s,nullptr));
+        return (str_convert<Char, long double>(s));
     }
 };
 
@@ -827,9 +836,9 @@ triml(std::basic_string<C,T,A>& s)
  * @brief removes leading and trailing whitespace from string
  *
  *****************************************************************************/
-template<class C, class T, class A>
+template<class C>
 inline void
-trim(std::basic_string<C,T,A>& s)
+trim(std::basic_string<C>& s)
 {
     triml(s);
     trimr(s);
@@ -841,14 +850,14 @@ trim(std::basic_string<C,T,A>& s)
  * @brief removes all whitespaces from string
  *
  *****************************************************************************/
-template<class C, class T, class A>
+template<class C>
 inline void
-remove_ws(std::basic_string<C,T,A>& s)
+remove_ws(std::basic_string<C>& s)
 {
     if(s.empty()) return;
 
     s.erase(std::remove_if(s.begin(), s.end(),
-                           [](char c) { return std::isspace(c); }),
+                           [](C c) { return std::isspace(c); }),
             s.end() );
 }
 
@@ -859,10 +868,10 @@ remove_ws(std::basic_string<C,T,A>& s)
  *        is a prefix of the 'subject' argument
  *
  *****************************************************************************/
-template<class C, class T, class A>
+template<class C>
 inline bool
-has_prefix(const std::basic_string<C,T,A>& subject,
-           const std::basic_string<C,T,A>& prefix)
+has_prefix(const std::basic_string<C>& subject,
+           const std::basic_string<C>& prefix)
 {
     if(prefix.size() > subject.size()) return false;
     return subject.find(prefix) == 0;
@@ -914,7 +923,7 @@ longest_common_prefix(const InputRange& strs)
     using str_size_t = typename std::decay<decltype(begin(strs)->size())>::type;
 
     const auto n = size_t(distance(begin(strs), end(strs)));
-    if(n < 1) return item_t("");
+    if(n < 1) return item_t({});
     if(n == 1) return *begin(strs);
 
     //length of shortest string
@@ -2241,7 +2250,7 @@ private:
     //---------------------------------------------------------------
     void add_flags(arg_tstring<Char> str) {
         //empty flags are not allowed
-        str::remove_ws(str);
+        str::remove_ws<Char>(str);
         if(!str.empty()) flags_.push_back(std::move(str));
     }
 
@@ -4986,7 +4995,7 @@ private:
     template<class ParamSelector>
     bool try_match_joined(const tgroup<Char>& joinGroup, arg_tstring<Char> arg,
                           const ParamSelector& select,
-                          const arg_tstring<Char>& prefix = "")
+                          const arg_tstring<Char>& prefix = {})
     {
         //temporary parser with 'joinGroup' as top-level tgroup
         parser parse {joinGroup};
