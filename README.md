@@ -1,6 +1,9 @@
 clipp - command line interfaces for modern C++
 ===========================================================
 
+## Fork spec
+Parametrize strings (need TCHAR on win)
+
 [![Linux build status](https://travis-ci.org/muellan/clipp.svg?branch=master)](https://travis-ci.org/muellan/clipp) [![MSVC build status](https://ci.appveyor.com/api/projects/status/ci29ngpfks980i7g?svg=true)](https://ci.appveyor.com/project/muellan/clipp)
 
 Easy to use, powerful and expressive command line argument handling for C++11/14/17 contained in a **single header file**. 
