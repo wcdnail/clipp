@@ -549,7 +549,7 @@ struct make<Char, long int> {
 template<typename Char>
 struct make<Char, long long int> {
     static inline long long int from(const Char* s) {
-        return (str_convertstr_convert<Char, long long>(s));
+        return (str_convert<Char, long long>(s));
     }
 };
 
