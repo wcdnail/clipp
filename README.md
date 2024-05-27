@@ -2208,3 +2208,7 @@ I would be delighted to hear from anyone who uses *clipp* in their project(s). I
 
 ## Fork reason
 Parametrize strings (need TCHAR on win)
+
+### ImpChanges
+- char/wchar_t/TCHAR - all stuff now parametrized
+- Remove overloading for clipp::value... etc functions, use clipp::valuef instead for filtering
