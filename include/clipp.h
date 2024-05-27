@@ -1438,7 +1438,7 @@ public:
         return *static_cast<Derived*>(this);
     }
 
-
+#if 0
     //---------------------------------------------------------------
     /** @brief adds targets = either objects whose values should be
      *         set by command line arguments or actions that should
@@ -1450,13 +1450,10 @@ public:
         target(std::forward<Ts>(ts)...);
         return *static_cast<Derived*>(this);
     }
+#endif
 
     /** @brief adds action that should be called in case of a match */
-    template<class T, class = typename std::enable_if<
-            !std::is_fundamental<typename std::decay<T>::type>() &&
-            (traits::is_callable<T,void()>() ||
-             traits::is_callable<T,void(const Char*)>() )
-        >::type>
+    template<class T>
     Derived&
     target(T&& t) {
         call(std::forward<T>(t));
@@ -1465,11 +1462,7 @@ public:
 
     /** @brief adds object whose value should be set by command line arguments
      */
-    template<class T, class = typename std::enable_if<
-            std::is_fundamental<typename std::decay<T>::type>() ||
-            (!traits::is_callable<T,void()>() &&
-             !traits::is_callable<T,void(const Char*)>() )
-        >::type>
+    template<class T>
     Derived&
     target(T& t) {
         set(t);
