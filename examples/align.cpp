@@ -8,6 +8,8 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -15,7 +17,7 @@
 #include <clipp.h>
 
 
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     using namespace clipp;
 
@@ -78,4 +80,5 @@ int main(int argc, char* argv[])
         case omode::stdio:  /* ... */    break;          
         case omode::file:   /* ... */    break;
     }
+    return 0;
 }

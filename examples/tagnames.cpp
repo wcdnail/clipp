@@ -8,6 +8,8 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 #include <set>
 #include <string>
@@ -15,7 +17,7 @@
 #include <clipp.h>
 
 
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     using namespace clipp;
     using std::cout;
@@ -33,7 +35,7 @@ int main(int argc, char* argv[])
 
     std::set<string> tags;
     auto cli = joinable(
-        values(tag_name, "string",
+        valuesf(tag_name, "string",
                [&](const string& arg){ if(arg[1] != '/') tags.insert(arg); })
     );
 
@@ -43,4 +45,5 @@ int main(int argc, char* argv[])
     } else {
         cout << "Usage:\n" << usage_lines(cli, argv[0]) << '\n';
     }
+    return 0;
 }

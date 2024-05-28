@@ -8,13 +8,15 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 #include <vector>
 
 #include <clipp.h>
 
 
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     using namespace clipp;
     using std::cout;
@@ -26,7 +28,7 @@ int main(int argc, char* argv[])
     char lbl = ' ';
     auto cli = (
         command("auto").set(lbl, '_') |
-        ( command("label"), value(is_char, "character", lbl) )
+        ( command("label"), valuef(is_char, "character", lbl) )
     );
 
     if(parse(argc, argv, cli)) {
@@ -35,4 +37,5 @@ int main(int argc, char* argv[])
     else {
         cout << "Usage:\n" << usage_lines(cli,argv[0]) << '\n';
     }
+    return 0;
 }

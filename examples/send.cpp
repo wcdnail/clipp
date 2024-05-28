@@ -8,6 +8,8 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -15,7 +17,7 @@
 #include <clipp.h>
 
 
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     using namespace clipp;
     using std::cout;
@@ -29,7 +31,7 @@ int main(int argc, char* argv[])
             .if_missing([]{ cout << "You need to provide a source filename!\n"; } )
             .if_repeated([](int idx){ cout << "Only one source file allowed! (index " << idx << ")\n"; } )
         ,
-        required("-t") & values(istarget, "target")
+        required("-t") & valuesf(istarget, "target")
             .if_missing([]{ cout << "You need to provide at least one target filename!\n"; } )
             .if_blocked([]{ cout << "Target names must not be given before the file command and the source file name!\n"; })
         ,
@@ -48,4 +50,5 @@ int main(int argc, char* argv[])
         }
         cout << "Usage:\n" << usage_lines(cli,argv[0]) << '\n';
     }
+    return 0;
 }

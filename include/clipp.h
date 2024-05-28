@@ -1501,7 +1501,7 @@ public:
     template<class T, class = typename std::enable_if<
             !std::is_fundamental<typename std::decay<T>::type>() &&
             (std::is_invocable_r<void, T>() ||
-             std::is_invocable_r<void, T, const Char*>() )
+             std::is_invocable_r<void, T, const Char*>())
         >::type>
     Derived&
     target(T&& t) {
@@ -1513,8 +1513,8 @@ public:
      */
     template<class T, class = typename std::enable_if<
             std::is_fundamental<typename std::decay<T>::type>() ||
-            (!std::is_invocable_r<void, T>() ||
-             !std::is_invocable_r<void, T, const Char*>() )
+            (!std::is_invocable_r<void, T>() &&
+             !std::is_invocable_r<void, T, const Char*>())
         >::type>
     Derived&
     target(T& t) {
@@ -5609,33 +5609,33 @@ parse(const int argc, Char* argv[], const tgroup<Char>& cli, arg_index offset = 
  *
  *****************************************************************************/
 template<typename Char>
-class paramf
+class tparam_filter
 {
 public:
     /** @brief only allow parameters with given prefix */
-    paramf& prefix(const arg_tstring<Char>& p) noexcept {
+    tparam_filter& prefix(const arg_tstring<Char>& p) noexcept {
         prefix_ = p; return *this;
     }
     /** @brief only allow parameters with given prefix */
-    paramf& prefix(arg_tstring<Char>&& p) noexcept {
+    tparam_filter& prefix(arg_tstring<Char>&& p) noexcept {
         prefix_ = std::move(p); return *this;
     }
     const arg_tstring<Char>& prefix()  const noexcept { return prefix_; }
 
     /** @brief only allow parameters with given requirement status */
-    paramf& required(tri t)  noexcept { required_ = t; return *this; }
+    tparam_filter& required(tri t)  noexcept { required_ = t; return *this; }
     tri           required() const noexcept { return required_; }
 
     /** @brief only allow parameters with given blocking status */
-    paramf& blocking(tri t)  noexcept { blocking_ = t; return *this; }
+    tparam_filter& blocking(tri t)  noexcept { blocking_ = t; return *this; }
     tri           blocking() const noexcept { return blocking_; }
 
     /** @brief only allow parameters with given repeatable status */
-    paramf& repeatable(tri t)  noexcept { repeatable_ = t; return *this; }
+    tparam_filter& repeatable(tri t)  noexcept { repeatable_ = t; return *this; }
     tri           repeatable() const noexcept { return repeatable_; }
 
     /** @brief only allow parameters with given docstring status */
-    paramf& has_doc(tri t)  noexcept { hasDoc_ = t; return *this; }
+    tparam_filter& has_doc(tri t)  noexcept { hasDoc_ = t; return *this; }
     tri           has_doc() const noexcept { return hasDoc_; }
 
 
@@ -6306,12 +6306,12 @@ private:
  *
  *****************************************************************************/
 template<typename Char>
-class usage_lines
+class tusage_lines
 {
 public:
     using string = doc_tstring<Char>;
 
-    usage_lines(const tgroup<Char>& cli, string prefix = string{},
+    tusage_lines(const tgroup<Char>& cli, string prefix = string{},
                 const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{})
     :
         cli_(cli), fmt_(fmt), prefix_(std::move(prefix))
@@ -6319,11 +6319,11 @@ public:
         if(!prefix_.empty()) prefix_ += Char(' ');
     }
 
-    usage_lines(const tgroup<Char>& cli, const tdoc_formatting<Char>& fmt):
-        usage_lines(cli, {}, fmt)
+    tusage_lines(const tgroup<Char>& cli, const tdoc_formatting<Char>& fmt):
+        tusage_lines(cli, {}, fmt)
     {}
 
-    usage_lines& ommit_outermost_group_surrounders(bool yes) {
+    tusage_lines& ommit_outermost_group_surrounders(bool yes) {
         ommitOutermostSurrounders_ = yes;
         return *this;
     }
@@ -6332,7 +6332,7 @@ public:
     }
 
     template<class OStream>
-    inline friend OStream& operator << (OStream& os, const usage_lines& p) {
+    inline friend OStream& operator << (OStream& os, const tusage_lines& p) {
         p.write(os);
         return os;
     }
@@ -6794,11 +6794,11 @@ public:
 
     tdocumentation(const tgroup<Char>& cli,
                    const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{},
-                   filter_function filter = paramf<Char>{})
+                   filter_function filter = tparam_filter<Char>{})
     :
         cli_(cli), fmt_{fmt}, usgFmt_{fmt}, filter_{std::move(filter)}
     {
-        //necessary, because we re-use "usage_lines" to generate
+        //necessary, because we re-use "tusage_lines" to generate
         //labels for documented groups
         usgFmt_.max_flags_per_param_in_usage(
             usgFmt_.max_flags_per_param_in_doc());
@@ -6808,7 +6808,7 @@ public:
         tdocumentation{cli, tdoc_formatting<Char>{}, std::move(filter)}
     {}
 
-    tdocumentation(const tgroup<Char>& cli, const paramf<Char>& filter) :
+    tdocumentation(const tgroup<Char>& cli, const tparam_filter<Char>& filter) :
         tdocumentation{cli, tdoc_formatting<Char>{},
                       [filter](const tparameter<Char>& p) { return filter(p); }}
     {}
@@ -6882,7 +6882,7 @@ private:
                 }
             }
             else { //tgroup label first then tgroup docstring
-                auto lbl = usage_lines(cli, usgFmt_)
+                auto lbl = tusage_lines(cli, usgFmt_)
                            .ommit_outermost_group_surrounders(true).str();
 
                 str::trim<Char>(lbl);
@@ -7122,12 +7122,12 @@ private:
  *****************************************************************************/
 template<typename Char>
 inline man_page<Char>
-make_man_page(const tgroup<Char>& cli,
-              doc_tstring<Char> progname = {},
-              const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{})
+tmake_man_page(const tgroup<Char>& cli,
+               doc_tstring<Char> progname = {},
+               const tdoc_formatting<Char>& fmt = tdoc_formatting<Char>{})
 {
     man_page<Char> man;
-    man.append_section(strings<Char>::SYNOPSIS, usage_lines<Char>(cli, progname,fmt).str());
+    man.append_section(strings<Char>::SYNOPSIS, tusage_lines<Char>(cli, progname,fmt).str());
     man.append_section(strings<Char>::OPTIONS, tdocumentation<Char>(cli, fmt).str());
     return man;
 }
@@ -7310,6 +7310,8 @@ using           group = tgroup<char>;
 using  parsing_result = tparsing_result<char>;
 using   documentation = tdocumentation<char>;
 using  doc_formatting = tdoc_formatting<char>;
+using     usage_lines = tusage_lines<char>;
+using    param_filter = tparam_filter<char>;
 
 namespace match {
 
@@ -7355,7 +7357,7 @@ template<class... Targets>
 inline parameter
 value(const doc_string& label, Targets&&... tgts)
 {
-    return tvalue<char>(label, std::forward<Targets>(tgts)...);
+    return tvalue<char, Targets...>(label, std::forward<Targets>(tgts)...);
 }
 
 template<class Filter, class... Targets>
@@ -7697,6 +7699,14 @@ inline group
 in_sequence(Param param, Params... params)
 {
     return tin_sequence<char, Param, Params...>(std::move(param), std::move(params)...);
+}
+
+inline man_page<char>
+make_man_page(const group& cli,
+              doc_string progname = {},
+              const tdoc_formatting<char>& fmt = tdoc_formatting<char>{})
+{
+    return tmake_man_page(cli, std::move(progname), fmt);
 }
 
 } // namespace clipp

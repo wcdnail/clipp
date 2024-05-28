@@ -8,6 +8,8 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -45,8 +47,8 @@ settings configuration(int argc, char* argv[])
     auto isfilename = clipp::match::prefix_not("-");
 
     auto inputOptions = (
-        required("-i", "-I", "--img") & !value(isfilename, "image file", s.imageFile),
-        required("-l", "-L", "--lbl") & !value(isfilename, "label file", s.labelFile)
+        required("-i", "-I", "--img") & !valuef(isfilename, "image file", s.imageFile),
+        required("-l", "-L", "--lbl") & !valuef(isfilename, "label file", s.labelFile)
     );
 
     auto trainMode = (
@@ -69,14 +71,14 @@ settings configuration(int argc, char* argv[])
 
     auto validationMode = (
         command("validate", "v", "V").set(s.selected,mode::validate),
-        !value(isfilename, "model", s.modelFile),
+        !valuef(isfilename, "model", s.modelFile),
         inputOptions
     );
 
     auto classificationMode = (
         command("classify", "c", "C").set(s.selected,mode::classify),
-        !value(isfilename, "model", s.modelFile),
-        !values(isfilename, "images", s.inputFiles)
+        !valuef(isfilename, "model", s.modelFile),
+        !valuesf(isfilename, "images", s.inputFiles)
     );
 
     auto cli = (
@@ -124,7 +126,7 @@ settings configuration(int argc, char* argv[])
 
 
 //-------------------------------------------------------------------
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     try {
         auto conf = configuration(argc, argv);
@@ -133,4 +135,5 @@ int main(int argc, char* argv[])
     catch(std::exception& e) {
         std::cerr << "ERROR: " << e.what() << '\n';
     }
+    return 0;
 }

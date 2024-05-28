@@ -8,12 +8,14 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 
 #include <clipp.h>
 
 
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     using namespace clipp;
     using std::cout;
@@ -62,4 +64,5 @@ int main(int argc, char* argv[])
 //        "deactivates c" % option("-c", "--noc") >> set(c,false),
 //        "says hi"       % option("--hi")        >> []{cout << "hi!\n";} );
 
+    return 0;
 }

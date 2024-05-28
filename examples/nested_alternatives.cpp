@@ -8,6 +8,8 @@
  *
  *****************************************************************************/
 
+#include "pch.h" // EXAMPLE_MAIN
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -15,7 +17,7 @@
 #include <clipp.h>
 
 
-int main(int argc, char* argv[])
+int EXAMPLE_MAIN(int argc, char* argv[])
 {
     using namespace clipp;
     using std::cout;
@@ -78,4 +80,5 @@ int main(int argc, char* argv[])
     else {
         cout << usage_lines(cli, argv[0]) << '\n';
     }
+    return 0;
 }

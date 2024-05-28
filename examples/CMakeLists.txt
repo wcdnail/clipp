@@ -8,6 +8,7 @@ if (MSVC)
   add_compile_options(
     /W4
     /EHsc
+    -D_AMD64_
   )
 else()
   if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -37,27 +38,27 @@ else()
   add_compile_options(-Wundef)
 endif()
 
+add_executable(ALL_examples)
+target_link_libraries(ALL_examples ${PROJECT_NAME}::${PROJECT_NAME})
+set_target_properties(ALL_examples PROPERTIES
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
+target_compile_definitions(ALL_examples PRIVATE
+    ALL_EXAMPLES_AS_SINGLE_PRJ
+)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} source_files)
-#if (BUILD_TESTING_SINGLE)
-#  add_executable(ALL_test)
-#  target_link_libraries(ALL_test ${PROJECT_NAME}::${PROJECT_NAME})
-#  set_target_properties(ALL_test PROPERTIES
-#    CXX_STANDARD_REQUIRED ON
-#    CXX_EXTENSIONS OFF
-#  )
-#  target_compile_definitions(ALL_test PRIVATE
-#      ALL_TESTS_AS_SINGLE_PRJ
-#  )
-#  foreach(src IN LISTS source_files)
-#    get_filename_component(name_we ${src} NAME_WE)
-#    target_sources(ALL_test PRIVATE ${src})
-#    set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "-DTHIS_TEST_FNAME=${name_we}")
-#  endforeach()
-#  target_precompile_headers(ALL_test PRIVATE
-#      "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.h>"
-#  )
-#  source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${source_files})
-#  set_target_properties(ALL_test PROPERTIES FOLDER "Tests")
+foreach(src IN LISTS source_files)
+  get_filename_component(name_we ${src} NAME_WE)
+  target_sources(ALL_examples PRIVATE ${src})
+  set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "-DTHIS_EXAMPLE_FNAME=${name_we}")
+endforeach()
+target_precompile_headers(ALL_examples PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.h>"
+)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${source_files})
+set_target_properties(ALL_examples PROPERTIES FOLDER "Examples")
+
 #else()
 #  foreach(src IN LISTS source_files)
 #    get_filename_component(name_we ${src} NAME_WE)
