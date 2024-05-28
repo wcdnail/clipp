@@ -57,6 +57,7 @@ if (BUILD_TESTING_SINGLE)
   target_sources(ALL_test PRIVATE 
     ${CMAKE_SOURCE_DIR}/include/clipp.h
     ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
+    ${CMAKE_SOURCE_DIR}/include/clipp-wide.h
   )
   target_precompile_headers(ALL_test PRIVATE
       "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.h>"

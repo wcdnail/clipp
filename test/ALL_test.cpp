@@ -18,6 +18,7 @@ int blocking_test08_main();
 int blocking_test09_main();
 int blocking_test10_main();
 int documentation_test_main();
+int documentation_test_wide_main();
 int empty_args_main();
 int flag_param_factories_test_main(int argc, char* argv[]);
 int joined_flags_test1_main();
@@ -87,6 +88,8 @@ int test_main_av(int(*routine)(int, char**), char const* test_name, int argc, ch
 
 int main(int argc, char* argv[])
 {
+    RUN_TEST(documentation_test_wide_main);
+
     RUN_TEST(actions_test_main);
     RUN_TEST(alternative_groups_test_main);
     RUN_TEST(alternative_options_test_main);

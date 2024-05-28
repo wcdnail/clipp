@@ -104,6 +104,7 @@ struct strings<char>
     constexpr static auto      unmapped = " [unmapped]\n";
     constexpr static auto  missingAfter = " [missing after ";
     constexpr static auto        triDot = "...";
+    constexpr static auto        digits = "0123456789+-";
 };
 
 template<>
@@ -142,6 +143,7 @@ struct strings<wchar_t>
     constexpr static auto      unmapped = L" [unmapped]\n";
     constexpr static auto  missingAfter = L" [missing after ";
     constexpr static auto        triDot = L"...";
+    constexpr static auto        digits = L"0123456789+-";
 };
 
 using arg_index = int;
@@ -1120,17 +1122,17 @@ first_number_match(std::basic_string<C,T,A> s,
  *        that represents an integer (with optional digit separators)
  *
  *****************************************************************************/
-template<class C, class T, class A>
+template<class C>
 subrange
-first_integer_match(std::basic_string<C,T,A> s,
+first_integer_match(const std::basic_string<C>& s,
                     C digitSeparator = C(','))
 {
-    using string_t = std::basic_string<C,T,A>;
+    using string_t = std::basic_string<C>;
 
-    str::trim(s);
+    //str::trim(s);
     if(s.empty()) return subrange{};
 
-    auto i = s.find_first_of("0123456789+-");
+    auto i = s.find_first_of(strings<C>::digits);
     if(i == string_t::npos) return subrange{};
 
     bool sep = false;
@@ -1815,7 +1817,7 @@ template<typename Char>
 inline bool
 talphanumeric(const arg_tstring<Char>& s) {
     if(s.empty()) return false;
-    return std::all_of(s.begin(), s.end(), [](char c) {return std::isalnum(c); });
+    return std::all_of(s.begin(), s.end(), [](Char c) {return std::isalnum(c); });
 }
 
 
@@ -1829,7 +1831,7 @@ talphanumeric(const arg_tstring<Char>& s) {
 template<typename Char>
 inline bool
 talphabetic(const arg_tstring<Char>& s) {
-    return std::all_of(s.begin(), s.end(), [](char c) {return std::isalpha(c); });
+    return std::all_of(s.begin(), s.end(), [](Char c) {return std::isalpha(c); });
 }
 
 
@@ -7305,3 +7307,4 @@ void print(OStream& os, const tgroup<Char>& g, int level)
 } // namespace clipp
 
 #include "clipp-narrow.h"
+#include "clipp-wide.h"

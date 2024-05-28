@@ -466,7 +466,7 @@ make_man_page(const group& cli,
               doc_string progname = {},
               const tdoc_formatting<char>& fmt = tdoc_formatting<char>{})
 {
-    return tmake_man_page(cli, std::move(progname), fmt);
+    return tmake_man_page<char>(cli, std::move(progname), fmt);
 }
 
 } // namespace clipp
