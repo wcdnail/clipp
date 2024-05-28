@@ -28,7 +28,7 @@ int EXAMPLE_MAIN(int argc, char* argv[])
     char lbl = ' ';
     auto cli = (
         command("auto").set(lbl, '_') |
-        ( command("label"), valuef(is_char, "character", lbl) )
+        ( command("label"), value(is_char, "character", lbl) )
     );
 
     if(parse(argc, argv, cli)) {

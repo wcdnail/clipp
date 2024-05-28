@@ -76,11 +76,14 @@ value(const doc_string& label, Targets&&... tgts)
     return tvalue<char, Targets...>(label, std::forward<Targets>(tgts)...);
 }
 
-template<class Filter, class... Targets>
+template<class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, char>>
 inline parameter
-valuef(Filter&& filter, const doc_string& label, Targets&&... tgts)
+value(Filter&& filter, const doc_string& label, Targets&&... tgts)
 {
-    return tvaluef<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+    return parameter{std::forward<Filter>(filter)}
+        .label(std::move(label))
+        .target(std::forward<Targets>(tgts)...)
+        .required(true).blocking(true).repeatable(false);
 }
 
 template<class... Targets>
@@ -90,11 +93,15 @@ values(const doc_string& label, Targets&&... tgts)
     return tvalues<char>(label, std::forward<Targets>(tgts)...);
 }
 
-template<class Filter, class... Targets>
+template<class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, char>>
 inline parameter
-valuesf(Filter&& filter, const doc_string& label, Targets&&... tgts)
+values(Filter&& filter, const doc_string& label, Targets&&... tgts)
 {
-    return tvaluesf<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+    return parameter{std::forward<Filter>(filter)}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(true).blocking(true).repeatable(true);
+
 }
 
 template<class... Targets>
@@ -104,11 +111,14 @@ opt_value(const doc_string& label, Targets&&... tgts)
     return topt_value<char>(label, std::forward<Targets>(tgts)...);
 }
 
-template<class Filter, class... Targets>
+template<class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, char>>
 inline parameter
-opt_valuef(Filter&& filter, const doc_string& label, Targets&&... tgts)
+opt_value(Filter&& filter, const doc_string& label, Targets&&... tgts)
 {
-    return topt_valuef<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+    return parameter{std::forward<Filter>(filter)}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(false).blocking(false).repeatable(false);
 }
 
 template<class... Targets>
@@ -118,11 +128,14 @@ opt_values(const doc_string& label, Targets&&... tgts)
     return topt_values<char, Targets...>(label, std::forward<Targets>(tgts)...);
 }
 
-template<class Filter, class... Targets>
+template<class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, char>>
 inline parameter
-opt_valuesf(Filter&& filter, const doc_string& label, Targets&&... tgts)
+opt_values(Filter&& filter, const doc_string& label, Targets&&... tgts)
 {
-    return topt_valuesf<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
+    return parameter{std::forward<Filter>(filter)}
+        .label(label)
+        .target(std::forward<Targets>(tgts)...)
+        .required(false).blocking(false).repeatable(true);
 }
 
 template<class... Targets>

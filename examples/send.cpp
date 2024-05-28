@@ -31,7 +31,7 @@ int EXAMPLE_MAIN(int argc, char* argv[])
             .if_missing([]{ cout << "You need to provide a source filename!\n"; } )
             .if_repeated([](int idx){ cout << "Only one source file allowed! (index " << idx << ")\n"; } )
         ,
-        required("-t") & valuesf(istarget, "target")
+        required("-t") & values(istarget, "target")
             .if_missing([]{ cout << "You need to provide at least one target filename!\n"; } )
             .if_blocked([]{ cout << "Target names must not be given before the file command and the source file name!\n"; })
         ,

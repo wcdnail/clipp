@@ -1496,6 +1496,7 @@ public:
     }
 
 #else
+
     /** @brief adds action that should be called in case of a match */
     template<class T, class = typename std::enable_if<
             !std::is_fundamental<typename std::decay<T>::type>() &&
@@ -2409,6 +2410,25 @@ toption(String&& flag, Strings&&... flags)
  *        matches any non-empty string
  *
  *****************************************************************************/
+#if (_CXX_STD < 201703L)
+
+template <class T, typename Char>
+using OverloadEnabled = typename std::enable_if<
+    traits::is_callable<T, bool(const Char*)>::value
+ || traits::is_callable<T, subrange(const Char*)>::value
+>::type;
+
+#else
+
+template <class T, typename Char>
+using OverloadEnabled = typename std::enable_if_t<
+    std::is_invocable_r_v<bool, T, const std::basic_string<Char>&>
+ || std::is_invocable_r_v<subrange, T, const std::basic_string<Char>&>
+>;
+
+#endif // 0
+
+
 template<typename Char, class... Targets>
 inline tparameter<Char>
 tvalue(const doc_tstring<Char>& label, Targets&&... tgts)
@@ -2419,31 +2439,15 @@ tvalue(const doc_tstring<Char>& label, Targets&&... tgts)
         .required(true).blocking(true).repeatable(false);
 }
 
-template <typename Char, class Filter>
-inline constexpr bool is_str_invocable()
-{
-#if (_CXX_STD < 201703L)
-    return traits::is_callable<Filter,bool(const Char*)>::value ||
-           traits::is_callable<Filter,subrange(const Char*)>::value
-    ;
-#else
-    return std::is_invocable_r_v<bool,     Filter, const std::basic_string<Char>&>
-        || std::is_invocable_r_v<subrange, Filter, const std::basic_string<Char>&>
-    ;
-#endif // #if (_CXX_STD < 201703L)
-}
-
-template<typename Char, class Filter, class... Targets>
+template<typename Char, class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, Char>>
 inline tparameter<Char>
-tvaluef(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
+tvalue(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
     return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
         .required(true).blocking(true).repeatable(false);
 }
-
 
 
 /*************************************************************************//**
@@ -2462,11 +2466,10 @@ tvalues(const doc_tstring<Char>& label, Targets&&... tgts)
         .required(true).blocking(true).repeatable(true);
 }
 
-template<typename Char, class Filter, class... Targets>
+template<typename Char, class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, Char>>
 inline tparameter<Char>
-tvaluesf(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
+tvalues(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
     return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
@@ -2491,11 +2494,10 @@ topt_value(const doc_tstring<Char>& label, Targets&&... tgts)
         .required(false).blocking(false).repeatable(false);
 }
 
-template<typename Char, class Filter, class... Targets>
+template<typename Char, class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, Char>>
 inline tparameter<Char>
-topt_valuef(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
+topt_value(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
     return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)
@@ -2520,11 +2522,10 @@ topt_values(const doc_tstring<Char>& label, Targets&&... tgts)
         .required(false).blocking(false).repeatable(true);
 }
 
-template<typename Char, class Filter, class... Targets>
+template<typename Char, class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, Char>>
 inline tparameter<Char>
-topt_valuesf(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
+topt_values(Filter&& filter, const doc_tstring<Char>& label, Targets&&... tgts)
 {
-    static_assert(is_str_invocable<Char, Filter>(), "The filter must provide bool operator() (const basic_string<Char>&)...");
     return tparameter<Char>{std::forward<Filter>(filter)}
         .label(label)
         .target(std::forward<Targets>(tgts)...)

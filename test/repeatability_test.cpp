@@ -87,7 +87,7 @@ void test(int lineNo,
         //itself from beeing matched as a value.
         repeatable(
             option("f").set(m.f).if_repeated(increment(r.f)) &
-            valuesf(match::prefix_not("f"), "F", m.i).if_repeated(increment(r.i))
+            values(match::prefix_not("f"), "F", m.i).if_repeated(increment(r.i))
         )
     );
 

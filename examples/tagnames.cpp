@@ -35,7 +35,7 @@ int EXAMPLE_MAIN(int argc, char* argv[])
 
     std::set<string> tags;
     auto cli = joinable(
-        valuesf(tag_name, "string",
+        values(tag_name, "string",
                [&](const string& arg){ if(arg[1] != '/') tags.insert(arg); })
     );
 

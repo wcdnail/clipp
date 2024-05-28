@@ -49,14 +49,14 @@ void test(int lineNo,
 
     test_active m;
 
-    auto mopt = option("-m").set(m.i,4) & valuesf(one_char, "char", [&](const std::string& a) {
+    auto mopt = option("-m").set(m.i,4) & values(one_char, "char", [&](const std::string& a) {
         m.s += a;
     });
 
     auto cli = group(
-        option("-i").set(m.i,1) & valuef(one_char, "A", m.a),
-        option("-j").set(m.i,2) & valuef(one_char, "A", m.a) & valuef(one_char, "B", m.b),
-        option("-k").set(m.i,3) & valuef(one_char, "A", m.a) & valuef(one_char, "B", m.b) & valuef(one_char, "C", m.c),
+        option("-i").set(m.i,1) & value(one_char, "A", m.a),
+        option("-j").set(m.i,2) & value(one_char, "A", m.a) & value(one_char, "B", m.b),
+        option("-k").set(m.i,3) & value(one_char, "A", m.a) & value(one_char, "B", m.b) & value(one_char, "C", m.c),
         std::move(mopt),
         option("-o").set(m.i,9) & value("str", m.s)
     );
