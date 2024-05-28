@@ -83,10 +83,6 @@ int test_main_av(int(*routine)(int, char**), char const* test_name, int argc, ch
 
 int main(int argc, char* argv[])
 {
-    RUN_TEST(joined_sequence_test_main);
-    RUN_TEST(values_conversion_test_main);
-    RUN_TEST(values_filter_test_main);
-
     RUN_TEST(actions_test_main);
     RUN_TEST(alternative_groups_test_main);
     RUN_TEST(alternative_options_test_main);
@@ -112,6 +108,7 @@ int main(int argc, char* argv[])
     RUN_TEST(joined_flags_test6_main);
     RUN_TEST(joined_params_test1_main);
     RUN_TEST(joined_params_test2_main);
+    RUN_TEST(joined_sequence_test_main);
     RUN_TEST(mixed_params_test_main);
     RUN_TEST(nesting_test_main);
     RUN_TEST(options_test_main);
@@ -122,6 +119,8 @@ int main(int argc, char* argv[])
     RUN_TEST(required_params_test1_main);
     RUN_TEST(required_params_test2_main);
     RUN_TEST(usage_lines_test_main);
+    RUN_TEST(values_conversion_test_main);
+    RUN_TEST(values_filter_test_main);
     RUN_TEST(values_sequencing_test_main);
     return 0;
 }

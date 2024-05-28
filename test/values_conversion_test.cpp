@@ -68,10 +68,10 @@ void test(int lineNo, T x, const std::string& arg, T expected)
 
     auto cli = group( value("", x) );
 
-//    std::cout << lineNo << " " << x << "  '" << arg << "' " << expected;
+    //std::cout << lineNo << " " << x << "  '" << arg << "' " << expected;
 
     run_test({ __FILE__, lineNo }, {arg.c_str()}, cli, [&]{
-//        std::cout << " -> " << x << std::endl;
+        //std::cout << " -> " << x << std::endl;
         return equals<T>::result(x,expected); } );
 }
 
@@ -136,7 +136,6 @@ struct test_clamp<T,Wide,false> {
 int TEST_MAIN()
 {
     try {
-
         test<bool>(__LINE__, false, "",  false);
         test<bool>(__LINE__, false, " ", true);
         test<bool>(__LINE__, false, "0", true);

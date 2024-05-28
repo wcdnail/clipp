@@ -450,16 +450,26 @@ inline T clamped_on_limits(const V& v) {
 }
 
 
-
-
 template<typename Char, typename T>
-T str_convert(const Char* source)
+inline T str_convert(const Char* source)
 {
     T temp{0};
     std::basic_istringstream<Char> istm{source};
     istm >> temp;
     return temp;
 }
+
+inline unsigned long long str_convert_ull(const char* source) { return std::strtoull(source, nullptr, 10); }
+inline long long           str_convert_ll(const char* source) { return std::strtoll(source, nullptr, 10); }
+inline float                 str_convertf(const char* source) { return std::strtof(source, nullptr); }
+inline double                str_convertd(const char* source) { return std::strtod(source, nullptr); }
+inline long double          str_convertld(const char* source) { return std::strtold(source, nullptr); }
+                     
+inline unsigned long long str_convert_ull(const wchar_t* source) { return std::wcstoull(source, nullptr, 10); }
+inline long long           str_convert_ll(const wchar_t* source) { return std::wcstoll(source, nullptr, 10); }
+inline float                 str_convertf(const wchar_t* source) { return std::wcstof(source, nullptr); }
+inline double                str_convertd(const wchar_t* source) { return std::wcstod(source, nullptr); }
+inline long double          str_convertld(const wchar_t* source) { return std::wcstold(source, nullptr); }
 
 /*************************************************************************//**
  *
@@ -487,7 +497,7 @@ template<typename Char>
 struct make<Char, unsigned char> {
     static inline unsigned char from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned char>(str_convert<Char, unsigned char>(s));
+        return clamped_on_limits<unsigned char>(str_convert_ull(s));
     }
 };
 
@@ -495,7 +505,7 @@ template<typename Char>
 struct make<Char, unsigned short int> {
     static inline unsigned short int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned short int>(str_convert<Char, unsigned short int>(s));
+        return clamped_on_limits<unsigned short int>(str_convert_ull(s));
     }
 };
 
@@ -503,7 +513,7 @@ template<typename Char>
 struct make<Char, unsigned int> {
     static inline unsigned int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned int>(str_convert<Char, unsigned int>(s));
+        return clamped_on_limits<unsigned int>(str_convert_ull(s));
     }
 };
 
@@ -511,7 +521,7 @@ template<typename Char>
 struct make<Char, unsigned long int> {
     static inline unsigned long int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned long int>(str_convert<Char, unsigned long int>(s));
+        return clamped_on_limits<unsigned long int>(str_convert_ull(s));
     }
 };
 
@@ -519,7 +529,7 @@ template<typename Char>
 struct make<Char, unsigned long long int> {
     static inline unsigned long long int from(const Char* s) {
         if(!fwd_to_unsigned_int(s)) return (0);
-        return clamped_on_limits<unsigned long long int>(str_convert<Char, unsigned long long>(s));
+        return clamped_on_limits<unsigned long long int>(str_convert_ull(s));
     }
 };
 
@@ -530,56 +540,56 @@ struct make<Char, char> {
         const auto n = std::strlen(s);
         if(n == 1) return s[0];
         //parse as integer
-        return clamped_on_limits<char>(str_convert<Char, char>(s));
+        return clamped_on_limits<char>(str_convert_ll(s));
     }
 };
 
 template<typename Char>
 struct make<Char, short int> {
     static inline short int from(const Char* s) {
-        return clamped_on_limits<short int>(str_convert<Char, short int>(s));
+        return clamped_on_limits<short int>(str_convert_ll(s));
     }
 };
 
 template<typename Char>
 struct make<Char, int> {
     static inline int from(const Char* s) {
-        return clamped_on_limits<int>(str_convert<Char, int>(s));
+        return clamped_on_limits<int>(str_convert_ll(s));
     }
 };
 
 template<typename Char>
 struct make<Char, long int> {
     static inline long int from(const Char* s) {
-        return clamped_on_limits<long int>(str_convert<Char, long int>(s));
+        return clamped_on_limits<long int>(str_convert_ll(s));
     }
 };
 
 template<typename Char>
 struct make<Char, long long int> {
     static inline long long int from(const Char* s) {
-        return (str_convert<Char, long long>(s));
+        return (str_convert_ll(s));
     }
 };
 
 template<typename Char>
 struct make<Char, float> {
     static inline float from(const Char* s) {
-        return (str_convert<Char, float>(s));
+        return (str_convertf(s));
     }
 };
 
 template<typename Char>
 struct make<Char, double> {
     static inline double from(const Char* s) {
-        return (str_convert<Char, double>(s));
+        return (str_convertd(s));
     }
 };
 
 template<typename Char>
 struct make<Char, long double> {
     static inline long double from(const Char* s) {
-        return (str_convert<Char, long double>(s));
+        return (str_convertld(s));
     }
 };
 
