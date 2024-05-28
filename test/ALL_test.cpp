@@ -50,8 +50,10 @@ int test_main(int(*routine)(), char const* test_name)
     int const rv = routine();
     if (rv != 0) {
         std::cerr << "Test '" << test_name << "' failed (" << rv << ")" << std::endl;
+        return rv;
     }
-    return rv;
+    std::cerr << "Test '" << test_name << "' OK" << std::endl;
+    return 0;
 }
 
 int test_main_av(int(*routine)(int, char**), char const* test_name, int argc, char** argv)
@@ -59,8 +61,10 @@ int test_main_av(int(*routine)(int, char**), char const* test_name, int argc, ch
     int const rv = routine(argc, argv);
     if (rv != 0) {
         std::cerr << "Test '" << test_name << "' failed (" << rv << ")" << std::endl;
+        return rv;
     }
-    return rv;
+    std::cerr << "Test '" << test_name << "' OK" << std::endl;
+    return 0;
 }
 
 #define RUN_TEST(Func)                  \

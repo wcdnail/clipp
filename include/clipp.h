@@ -28,8 +28,7 @@
  *
  *****************************************************************************/
 
-#ifndef AM_CLIPP_H__
-#define AM_CLIPP_H__
+#pragma once
 
 #include <cstring>
 #include <string>
@@ -1310,7 +1309,7 @@ namespace detail {
  *
  *****************************************************************************/
 template<typename Char, class Derived>
-class action_provider
+class taction_provider
 {
 private:
     //---------------------------------------------------------------
@@ -1640,7 +1639,7 @@ private:
  *
  *****************************************************************************/
 template<typename Char, class Derived>
-class token
+class ttoken
 {
 public:
     //---------------------------------------------------------------
@@ -1709,14 +1708,14 @@ private:
  *****************************************************************************/
 template<typename Char, class T>
 inline T&
-operator % (doc_tstring<Char> docstr, token<Char, T>& p)
+operator % (doc_tstring<Char> docstr, ttoken<Char, T>& p)
 {
     return p.doc(std::move(docstr));
 }
 //---------------------------------------------------------
 template<typename Char, class T>
 inline T&&
-operator % (doc_tstring<Char> docstr, token<Char, T>&& p)
+operator % (doc_tstring<Char> docstr, ttoken<Char, T>&& p)
 {
     return std::move(p.doc(std::move(docstr)));
 }
@@ -1724,14 +1723,14 @@ operator % (doc_tstring<Char> docstr, token<Char, T>&& p)
 //---------------------------------------------------------
 template<typename Char, class T>
 inline T&
-operator % (token<Char, T>& p, doc_tstring<Char> docstr)
+operator % (ttoken<Char, T>& p, doc_tstring<Char> docstr)
 {
     return p.doc(std::move(docstr));
 }
 //---------------------------------------------------------
 template<typename Char, class T>
 inline T&&
-operator % (token<Char, T>&& p, doc_tstring<Char> docstr)
+operator % (ttoken<Char, T>&& p, doc_tstring<Char> docstr)
 {
     return std::move(p.doc(std::move(docstr)));
 }
@@ -1746,14 +1745,14 @@ operator % (token<Char, T>&& p, doc_tstring<Char> docstr)
  *****************************************************************************/
 template<typename Char, class T>
 inline T&
-tdoc(doc_tstring<Char> docstr, token<Char, T>& p)
+tdoc(doc_tstring<Char> docstr, ttoken<Char, T>& p)
 {
     return p.doc(std::move(docstr));
 }
 //---------------------------------------------------------
 template<typename Char, class T>
 inline T&&
-tdoc(doc_tstring<Char> docstr, token<Char, T>&& p)
+tdoc(doc_tstring<Char> docstr, ttoken<Char, T>&& p)
 {
     return std::move(p.doc(std::move(docstr)));
 }
@@ -2085,8 +2084,8 @@ inline length max_length(std::size_t max)
  *****************************************************************************/
 template <typename Char>
 class tparameter :
-    public detail::token<Char, tparameter<Char>>,
-    public detail::action_provider<Char, tparameter<Char>>
+    public detail::ttoken<Char, tparameter<Char>>,
+    public detail::taction_provider<Char, tparameter<Char>>
 {
     /** @brief adapts a 'match_predicate' to the 'match_function' interface */
     class predicate_adapter {
@@ -2791,7 +2790,7 @@ tany(Filter&& filter, Targets&&... tgts)
  *****************************************************************************/
 template<typename Char>
 class tgroup :
-    public detail::token<Char, tgroup<Char>>
+    public detail::ttoken<Char, tgroup<Char>>
 {
     //---------------------------------------------------------------
     /**
@@ -3429,12 +3428,12 @@ public:
     //---------------------------------------------------------------
     /** @brief returns if the entire group is blocking / positional */
     bool blocking() const noexcept {
-        return detail::token<Char, tgroup>::blocking() || (exclusive() && all_blocking());
+        return detail::ttoken<Char, tgroup>::blocking() || (exclusive() && all_blocking());
     }
     //-----------------------------------------------------
     /** @brief determines if the entire group is blocking / positional */
     tgroup& blocking(bool yes) {
-        return detail::token<Char, tgroup>::blocking(yes);
+        return detail::ttoken<Char, tgroup>::blocking(yes);
     }
 
     //---------------------------------------------------------------
@@ -3742,7 +3741,7 @@ using tpattern = typename tgroup<Char>::child;
  *
  *****************************************************************************/
 template<typename Char, class Action>
-void for_all_params(tgroup<Char>& g, Action&& action)
+inline void for_all_params(tgroup<Char>& g, Action&& action)
 {
     for(auto& p : g) {
         if(p.is_group()) {
@@ -3755,7 +3754,7 @@ void for_all_params(tgroup<Char>& g, Action&& action)
 }
 
 template<typename Char, class Action>
-void for_all_params(const tgroup<Char>& g, Action&& action)
+inline void for_all_params(const tgroup<Char>& g, Action&& action)
 {
     for(auto& p : g) {
         if(p.is_group()) {
@@ -4086,7 +4085,7 @@ twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>& p) {
 }
 
 template<typename Char>
-inline tparameter<Char>&
+inline tparameter<Char>&&
 twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>&& p) {
     with_prefix_impl<Char>(prefix, p);
     return std::move(p);
@@ -4095,13 +4094,13 @@ twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>&& p) {
 //-------------------------------------------------------------------
 template<typename Char>
 inline tgroup<Char>&
-twith_prefix_impl(const arg_tstring<Char>& prefix, tgroup<Char>& g)
+twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_prefix_impl<Char>(prefix, p.as_group()); // RECURSION !!!
+            twith_prefix<Char>(prefix, p.as_group()); // RECURSION !!!
         } else {
-            with_prefix_impl<Char>(prefix, p.as_param());
+            twith_prefix<Char>(prefix, p.as_param());
         }
     }
     return g;
@@ -4109,29 +4108,10 @@ twith_prefix_impl(const arg_tstring<Char>& prefix, tgroup<Char>& g)
 
 template<typename Char>
 inline tgroup<Char>&&
-twith_prefix_impl(const arg_tstring<Char>& prefix, tgroup<Char>&& g)
-{
-    twith_prefix_impl<Char>(prefix, g);
-    return std::move(g);
-}
-
-
-#if 0
-
-template<typename Char>
-inline tgroup<Char>&&
 twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>&& g)
 {
-    return std::move(twith_prefix_impl(prefix, g));
-}
-
-
-template<typename Char, class Param, class... Params>
-inline tgroup<Char>
-twith_prefix(arg_tstring<Char> prefix, Param&& param, Params&&... params)
-{
-    return twith_prefix_impl(prefix, tgroup<Char>{std::forward<Param>(param),
-                                      std::forward<Params>(params)...});
+    twith_prefix<Char>(prefix, g);
+    return std::move(g);
 }
 
 
@@ -4144,26 +4124,34 @@ twith_prefix(arg_tstring<Char> prefix, Param&& param, Params&&... params)
  *
  *****************************************************************************/
 template<typename Char>
-inline tparameter<Char>&&
+inline tparameter<Char>&
 twith_prefixes_short_long(const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
                           tparameter<Char>& p)
 {
-    return std::move(with_prefixes_short_long_impl(shortpfx, longpfx, p));
+    return with_prefixes_short_long_impl<Char>(shortpfx, longpfx, p);
 }
 
+template<typename Char>
+inline tparameter<Char>&&
+twith_prefixes_short_long(const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
+                          tparameter<Char>&& p)
+{
+    with_prefixes_short_long_impl<Char>(shortpfx, longpfx, p);
+    return std::move(p);
+}
 
 //-------------------------------------------------------------------
 template<typename Char>
 inline tgroup<Char>&
-twith_prefixes_short_long_impl(const arg_tstring<Char>& shortFlagPrefix,
-                               const arg_tstring<Char>& longFlagPrefix,
-                               tgroup<Char>& g)
+twith_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
+                          const arg_tstring<Char>& longFlagPrefix,
+                          tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix, p.as_group());  // RECURSION !!!
+            twith_prefixes_short_long<Char>(shortFlagPrefix, longFlagPrefix, p.as_group());  // RECURSION !!!
         } else {
-            with_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix, p.as_param());
+            twith_prefixes_short_long<Char>(shortFlagPrefix, longFlagPrefix, p.as_param());
         }
     }
     return g;
@@ -4173,10 +4161,10 @@ template<typename Char>
 inline tgroup<Char>&&
 twith_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
                           const arg_tstring<Char>& longFlagPrefix,
-                          tgroup<Char>&& params)
+                          tgroup<Char>&& g)
 {
-    return std::move(twith_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix,
-                                                    params));
+    twith_prefixes_short_long<Char>(shortFlagPrefix, longFlagPrefix, g);
+    return std::move(g);
 }
 
 
@@ -4186,9 +4174,9 @@ with_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
                          const arg_tstring<Char>& longFlagPrefix,
                          Param&& param, Params&&... params)
 {
-    return twith_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix,
-                                          tgroup<Char>{std::forward<Param>(param),
-                                                std::forward<Params>(params)...});
+    return twith_prefixes_short_long<Char>(shortFlagPrefix, longFlagPrefix,
+                                           tgroup<Char>{std::forward<Param>(param),
+                                                 std::forward<Params>(params)...});
 }
 
 
@@ -4198,11 +4186,17 @@ with_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
  *
  *****************************************************************************/
 template<typename Char>
-inline tparameter<Char>&&
-twith_suffix(const arg_tstring<Char>& suffix, tparameter<Char>&& p) {
-    return std::move(twith_suffix_impl(suffix, std::forward<tparameter<Char>>(p)));
+inline tparameter<Char>&
+twith_suffix(const arg_tstring<Char>& suffix, tparameter<Char>& p) {
+    return with_suffix_impl<Char>(suffix, p);
 }
 
+template<typename Char>
+inline tparameter<Char>&&
+twith_suffix(const arg_tstring<Char>& suffix, tparameter<Char>&& p) {
+    with_suffix_impl<Char>(suffix, p);
+    return std::move(p);
+}
 
 //-------------------------------------------------------------------
 template<typename Char>
@@ -4211,32 +4205,29 @@ twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_suffix_impl(suffix, p.as_group());
+            twith_suffix(suffix, p.as_group()); // RECURSION !!!
         } else {
-            twith_suffix_impl(suffix, p.as_param());
+            twith_suffix(suffix, p.as_param());
         }
     }
     return g;
 }
 
-
 template<typename Char>
 inline tgroup<Char>&&
-twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>&& params)
+twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>&& g)
 {
-    return std::move(twith_suffix_impl(suffix, params));
+    twith_suffix(suffix, g);
+    return std::move(g);
 }
-
 
 template<typename Char, class Param, class... Params>
 inline tgroup<Char>
 twith_suffix(arg_tstring<Char> suffix, Param&& param, Params&&... params)
 {
-    return twith_suffix_impl(suffix, tgroup<Char>{std::forward<Param>(param),
-                             std::forward<Params>(params)...});
+    return twith_suffix(suffix, tgroup<Char>{std::forward<Param>(param),
+                        std::forward<Params>(params)...});
 }
-
-
 
 /*************************************************************************//**
  *
@@ -4247,13 +4238,21 @@ twith_suffix(arg_tstring<Char> suffix, Param&& param, Params&&... params)
  *
  *****************************************************************************/
 template<typename Char>
+inline tparameter<Char>&
+twith_suffixes_short_long(const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
+                          tparameter<Char>& p)
+{
+    return with_suffixes_short_long_impl(shortsfx, longsfx, p);
+}
+
+template<typename Char>
 inline tparameter<Char>&&
 twith_suffixes_short_long(const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
                           tparameter<Char>&& p)
 {
-    return std::move(twith_suffixes_short_long_impl(shortsfx, longsfx, std::forward<tparameter<Char>>(p)));
+    with_suffixes_short_long_impl(shortsfx, longsfx, p);
+    return std::move(p);
 }
-
 
 //-------------------------------------------------------------------
 template<typename Char>
@@ -4264,9 +4263,9 @@ twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix, p.as_group());
+            twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_group()); // RECURSION !!!
         } else {
-            twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix, p.as_param());
+            twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_param());
         }
     }
     return g;
@@ -4277,9 +4276,10 @@ template<typename Char>
 inline tgroup<Char>&&
 twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
                           const arg_tstring<Char>& longFlagSuffix,
-                          tgroup<Char>&& params)
+                          tgroup<Char>&& g)
 {
-    return std::move(twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix, params));
+    twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, g);
+    return std::move(g);
 }
 
 
@@ -4293,8 +4293,6 @@ twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
                                           tgroup<Char>{std::forward<Param>(param),
                                                 std::forward<Params>(params)...});
 }
-
-#endif // #if 0
 
 /*************************************************************************//**
  *
@@ -7303,412 +7301,6 @@ void print(OStream& os, const tgroup<Char>& g, int level)
 
 } // namespace debug
 
-using match_predicate = std::function<bool(const arg_string&)>;
-using  match_function = std::function<subrange(const arg_string&)>;
-using       parameter = tparameter<char>;
-using           group = tgroup<char>;
-using  parsing_result = tparsing_result<char>;
-using   documentation = tdocumentation<char>;
-using  doc_formatting = tdoc_formatting<char>;
-using     usage_lines = tusage_lines<char>;
-using    param_filter = tparam_filter<char>;
-
-namespace match {
-
-inline bool          any(const arg_string& s) { return tany<char>(s); }
-inline bool         none(const arg_string& s) { return tnone<char>(s); }
-inline bool     nonempty(const arg_string& s) { return tnonempty<char>(s); }
-inline bool alphanumeric(const arg_string& s) { return talphanumeric<char>(s); }
-inline bool   alphabetic(const arg_string& s) { return talphabetic<char>(s); }
-
-using           none_of = tnone_of<char>;
-using           numbers = tnumbers<char>;
-using          integers = tintegers<char>;
-using positive_integers = tpositive_integers<char>;
-using         substring = tsubstring<char>;
-using            prefix = tprefix<char>;
-using        prefix_not = tprefix_not<char>;
-using          noprefix = prefix_not;
-
-} // namespace match
-
-template<class String, class... Strings>
-inline parameter
-command(String&& flag, Strings&&... flags)
-{
-    return tcommand<char>(std::forward<String>(flag), std::forward<Strings>(flags)...);
-}
-
-template<class String, class... Strings>
-inline parameter
-required(String&& flag, Strings&&... flags)
-{
-    return trequired<char>(std::forward<String>(flag), std::forward<Strings>(flags)...);
-}
-
-template<class String, class... Strings>
-inline parameter
-option(String&& flag, Strings&&... flags)
-{
-    return toption<char>(std::forward<String>(flag), std::forward<Strings>(flags)...);
-}
-
-template<class... Targets>
-inline parameter
-value(const doc_string& label, Targets&&... tgts)
-{
-    return tvalue<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class Filter, class... Targets>
-inline parameter
-valuef(Filter&& filter, const doc_string& label, Targets&&... tgts)
-{
-    return tvaluef<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-values(const doc_string& label, Targets&&... tgts)
-{
-    return tvalues<char>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class Filter, class... Targets>
-inline parameter
-valuesf(Filter&& filter, const doc_string& label, Targets&&... tgts)
-{
-    return tvaluesf<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_value(const doc_string& label, Targets&&... tgts)
-{
-    return topt_value<char>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class Filter, class... Targets>
-inline parameter
-opt_valuef(Filter&& filter, const doc_string& label, Targets&&... tgts)
-{
-    return topt_valuef<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_values(const doc_string& label, Targets&&... tgts)
-{
-    return topt_values<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class Filter, class... Targets>
-inline parameter
-opt_valuesf(Filter&& filter, const doc_string& label, Targets&&... tgts)
-{
-    return topt_valuesf<char, Filter, Targets...>(std::forward<Filter>(filter), label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-word(const doc_string& label, Targets&&... tgts)
-{
-    return tword<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-words(const doc_string& label, Targets&&... tgts)
-{
-    return twords<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_word(const doc_string& label, Targets&&... tgts)
-{
-    return topt_word<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_words(const doc_string& label, Targets&&... tgts)
-{
-    return topt_words<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-number(const doc_string& label, Targets&&... tgts)
-{
-    return tnumber<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-numbers(const doc_string& label, Targets&&... tgts)
-{
-    return tnumbers<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_number(const doc_string& label, Targets&&... tgts)
-{
-    return topt_number<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_numbers(const doc_string& label, Targets&&... tgts)
-{
-    return topt_numbers<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-integer(const doc_string& label, Targets&&... tgts)
-{
-    return tinteger<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-integers(const doc_string& label, Targets&&... tgts)
-{
-    return tintegers<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_integer(const doc_string& label, Targets&&... tgts)
-{
-    return topt_integer<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-opt_integers(const doc_string& label, Targets&&... tgts)
-{
-    return topt_integers<char, Targets...>(label, std::forward<Targets>(tgts)...);
-}
-
-template<class... Targets>
-inline parameter
-any_other(Targets&&... tgts)
-{
-    return tany_other<char, Targets...>(std::forward<Targets>(tgts)...);
-}
-
-template<class Filter, class... Targets>
-inline parameter
-any(Filter&& filter, Targets&&... tgts)
-{
-    return tany<char, Filter, Targets...>(std::forward<Filter>(filter), std::forward<Targets>(tgts)...);
-}
-
-inline tgroup<char>&
-with_prefix(const arg_string& prefix, tgroup<char>& g)
-{
-    return twith_prefix_impl<char>(prefix, g);
-}
-
-inline tgroup<char>&&
-with_prefix(const arg_string& prefix, tgroup<char>&& g)
-{
-    return std::move(twith_prefix_impl<char>(prefix, g));
-}
-
-#if 0
-inline group&&
-with_prefix(const arg_string& prefix, group&& params)
-{
-    return std::move(twith_prefix<char>(prefix, std::forward<group>(params)));
-}
-
-template<class Param, class... Params>
-inline group
-with_prefix(const arg_string& prefix, Param&& param, Params&&... params)
-{
-    return twith_prefix<char, Param, Params...>(prefix, std::forward<Param>(param), std::forward<Params>(params)...);
-}
-
-inline parameter&
-with_prefixes_short_long(const arg_string& shortpfx, const arg_string& longpfx, parameter& p)
-{
-    return twith_prefixes_short_long_impl<char>(shortpfx, longpfx, p);
-}
-
-inline group&
-with_prefixes_short_long(const arg_string& shortFlagPrefix,
-                         const arg_string& longFlagPrefix,
-                         group& g)
-{
-    return twith_prefixes_short_long_impl<char>(shortFlagPrefix, longFlagPrefix, g);
-}
-
-inline group&&
-with_prefixes_short_long(const arg_string& shortFlagPrefix,
-                         const arg_string& longFlagPrefix,
-                         group&& params)
-{
-    return std::move(twith_prefixes_short_long<char>(shortFlagPrefix, longFlagPrefix,
-                                                     std::forward<group>(params)));
-}
-
-template<class Param, class... Params>
-inline group
-with_prefixes_short_long(const arg_string& shortFlagPrefix,
-                         const arg_string& longFlagPrefix,
-                         Param&& param, Params&&... params)
-{
-    return twith_prefixes_short_long<char, Param, Params...>(shortFlagPrefix, longFlagPrefix,
-                                     std::forward<Param>(param),
-                                     std::forward<Params>(params)...);
-}
-
-inline parameter&&
-with_suffix(const arg_string& suffix, parameter&& p)
-{
-    return std::move(twith_suffix<char>(suffix, std::forward<parameter>(p)));
-}
-
-inline group&
-with_suffix(const arg_string& suffix, group& g)
-{
-    return twith_suffix<char>(suffix, g);
-}
-
-inline group&&
-with_suffix(const arg_string& suffix, group&& params)
-{
-    return std::move(twith_suffix<char>(suffix, std::forward<group>(params)));
-}
-
-template<class Param, class... Params>
-inline group
-with_suffix(arg_string suffix, Param&& param, Params&&... params)
-{
-    return twith_suffix<char, Param, Params...>(suffix,
-                                                std::forward<Param>(param),
-                                                std::forward<Params>(params)...);
-}
-
-inline parameter&&
-with_suffixes_short_long(const arg_string& shortsfx, const arg_string& longsfx,
-                         parameter&& p)
-{
-    return std::move(twith_suffixes_short_long<char>(shortsfx, longsfx,
-                                                     std::forward<parameter>(p)));
-}
-
-inline group&
-with_suffixes_short_long(const arg_string& shortFlagSuffix,
-                         const arg_string& longFlagSuffix,
-                         group& g)
-{
-    return twith_suffixes_short_long<char>(shortFlagSuffix, longFlagSuffix, g);
-}
-
-inline group&&
-with_suffixes_short_long(const arg_string& shortFlagSuffix,
-                         const arg_string& longFlagSuffix,
-                         group&& params)
-{
-    return std::move(twith_suffixes_short_long<char>(shortFlagSuffix, longFlagSuffix,
-                                                     std::forward<group>(params)));
-}
-
-
-template<class Param, class... Params>
-inline group
-with_suffixes_short_long(const arg_string& shortFlagSuffix,
-                         const arg_string& longFlagSuffix,
-                         Param&& param, Params&&... params)
-{
-    return twith_suffixes_short_long<char, Param, Params...>(shortFlagSuffix, longFlagSuffix,
-                                                             std::forward<Param>(param),
-                                                             std::forward<Params>(params)...);
-}
-
-#endif // #if 0
-
-namespace detail {
-
-template<class T> inline T&  operator % (doc_string docstr, token<char, T>&  p) { return p.doc(std::move(docstr)); }
-template<class T> inline T&& operator % (doc_string docstr, token<char, T>&& p) { return std::move(p.doc(std::move(docstr))); }
-template<class T> inline T&  operator % (token<char, T>&  p, doc_string docstr) { return p.doc(std::move(docstr)); }
-template<class T> inline T&& operator % (token<char, T>&& p, doc_string docstr) { return std::move(p.doc(std::move(docstr))); }
-
-} // namespace detail
-
-inline group joinable(group g)
-{
-    return tjoinable<char>(g);
-}
-
-template<class... Params>
-inline group
-joinable(parameter param, Params... params)
-{
-    return tjoinable<char, Params...>(std::move(param), std::move(params)...); 
-}
-
-template<class P2, class... Ps>
-inline group
-joinable(group p1, P2 p2, Ps... ps)
-{
-    return tjoinable<char, P2, Ps...>(std::move(p1), std::move(p2), std::move(ps)...);
-}
-
-template<class Param, class... Params>
-inline group
-joinable(doc_string docstr, Param param, Params... params)
-{
-    return tjoinable<char, Param, Params...>(std::move(docstr), std::move(param), std::move(params)...);
-}
-
-inline parameter 
-repeatable(parameter p)
-{
-    return trepeatable<char>(p); 
-}
-
-inline group
-repeatable(group g)
-{
-    return trepeatable<char>(g);
-}
-
-template<class P2, class... Ps>
-inline group
-repeatable(parameter p1, P2 p2, Ps... ps)
-{
-    return trepeatable<char, P2, Ps...>(std::move(p1), std::move(p2), std::move(ps)...);
-}
-
-template<class P2, class... Ps>
-inline group
-repeatable(group p1, P2 p2, Ps... ps)
-{
-    return trepeatable<char, P2, Ps...>(std::move(p1), std::move(p2), std::move(ps)...);
-}
-
-template<class Param, class... Params>
-inline group
-in_sequence(Param param, Params... params)
-{
-    return tin_sequence<char, Param, Params...>(std::move(param), std::move(params)...);
-}
-
-inline man_page<char>
-make_man_page(const group& cli,
-              doc_string progname = {},
-              const tdoc_formatting<char>& fmt = tdoc_formatting<char>{})
-{
-    return tmake_man_page(cli, std::move(progname), fmt);
-}
-
 } // namespace clipp
 
-#endif
+#include "clipp-narrow.h"

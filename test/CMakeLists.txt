@@ -54,6 +54,10 @@ if (BUILD_TESTING_SINGLE)
     target_sources(ALL_test PRIVATE ${src})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "-DTHIS_TEST_FNAME=${name_we}")
   endforeach()
+  target_sources(ALL_test PRIVATE 
+    ${CMAKE_SOURCE_DIR}/include/clipp.h
+    ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
+  )
   target_precompile_headers(ALL_test PRIVATE
       "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.h>"
   )
