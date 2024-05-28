@@ -389,6 +389,15 @@ struct has_size_getter :
 namespace detail {
 
 
+template <typename Char>
+inline constexpr bool is_space(Char ch)
+{
+#ifdef _MSC_VER
+    return std::isspace((uint8_t)ch); // ucrt ASSERT raised if char is out of 0..255 range
+#else
+    return std::isspace(ch);
+#endif
+}
 /*************************************************************************//**
  * @brief forwards string to first non-whitespace char;
  *        std string -> unsigned conv yields max value, but we want 0;
@@ -399,7 +408,7 @@ inline bool
 fwd_to_unsigned_int(const Char*& s)
 {
     if(!s) return false;
-    for(; std::isspace(*s); ++s);
+    for(; detail::is_space(*s); ++s);
     if(!s[0] || s[0] == '-') return false;
     if(s[0] == '-') return false;
     return true;
@@ -807,7 +816,7 @@ trimr(std::basic_string<C>& s)
 
     s.erase(
         std::find_if_not(s.rbegin(), s.rend(),
-                         [](C c) { return std::isspace(c);} ).base(),
+                         [](C c) { return detail::is_space(c);} ).base(),
         s.end() );
 }
 
@@ -826,7 +835,7 @@ triml(std::basic_string<C>& s)
     s.erase(
         s.begin(),
         std::find_if_not(s.begin(), s.end(),
-                         [](C c) { return std::isspace(c);})
+                         [](C c) { return detail::is_space(c);})
     );
 }
 
@@ -857,7 +866,7 @@ remove_ws(std::basic_string<C>& s)
     if(s.empty()) return;
 
     s.erase(std::remove_if(s.begin(), s.end(),
-                           [](C c) { return std::isspace(c); }),
+                           [](C c) { return detail::is_space(c); }),
             s.end() );
 }
 
@@ -1438,7 +1447,8 @@ public:
         return *static_cast<Derived*>(this);
     }
 
-#if 0
+#if (_CXX_STD < 201703L)
+
     //---------------------------------------------------------------
     /** @brief adds targets = either objects whose values should be
      *         set by command line arguments or actions that should
@@ -1450,10 +1460,13 @@ public:
         target(std::forward<Ts>(ts)...);
         return *static_cast<Derived*>(this);
     }
-#endif
 
     /** @brief adds action that should be called in case of a match */
-    template<class T>
+    template<class T, class = typename std::enable_if<
+            !std::is_fundamental<typename std::decay<T>::type>() &&
+            (traits::is_callable<T,void()>() ||
+             traits::is_callable<T,void(const char*)>() )
+        >::type>
     Derived&
     target(T&& t) {
         call(std::forward<T>(t));
@@ -1462,12 +1475,73 @@ public:
 
     /** @brief adds object whose value should be set by command line arguments
      */
-    template<class T>
+    template<class T, class = typename std::enable_if<
+            std::is_fundamental<typename std::decay<T>::type>() ||
+            (!traits::is_callable<T,void()>() &&
+             !traits::is_callable<T,void(const char*)>() )
+        >::type>
     Derived&
     target(T& t) {
         set(t);
         return *static_cast<Derived*>(this);
     }
+
+#else
+    /** @brief adds action that should be called in case of a match */
+    template<class T, class = typename std::enable_if<
+            !std::is_fundamental<typename std::decay<T>::type>() &&
+            (std::is_invocable_r<void, T>() ||
+             std::is_invocable_r<void, T, const Char*>() )
+        >::type>
+    Derived&
+    target(T&& t) {
+        call(std::forward<T>(t));
+        return *static_cast<Derived*>(this);
+    }
+
+    /** @brief adds object whose value should be set by command line arguments
+     */
+    template<class T, class = typename std::enable_if<
+            std::is_fundamental<typename std::decay<T>::type>() ||
+            (!std::is_invocable_r<void, T>() ||
+             !std::is_invocable_r<void, T, const Char*>() )
+        >::type>
+    Derived&
+    target(T& t) {
+        set(t);
+        return *static_cast<Derived*>(this);
+    }
+
+    //---------------------------------------------------------------
+    /** @brief adds targets = either objects whose values should be
+     *         set by command line arguments or actions that should
+     *         be called in case of a match */
+    template<class T, class... Ts>
+    Derived&
+    target(T&& t, Ts&&... ts) {
+        target(std::forward<T>(t));
+        target(std::forward<Ts>(ts)...);
+        return *static_cast<Derived*>(this);
+    }
+
+    ///** @brief adds action that should be called in case of a match */
+    //template<class T>
+    //Derived&
+    //target(T&& t) {
+    //    call(std::forward<T>(t));
+    //    return *static_cast<Derived*>(this);
+    //}
+
+    ///** @brief adds object whose value should be set by command line arguments
+    // */
+    //template<class T>
+    //Derived&
+    //target(T& t) {
+    //    set(t);
+    //    return *static_cast<Derived*>(this);
+    //}
+
+#endif
 
     //TODO remove ugly empty param list overload
     Derived&
@@ -2166,8 +2240,9 @@ public:
 
     //---------------------------------------------------------------
     /** @brief prepend prefix to each flag */
+    template <typename Char>
     inline friend tparameter&
-    with_prefix(const arg_tstring<Char>& prefix, tparameter& p)
+    with_prefix_impl(const arg_tstring<Char>& prefix, tparameter& p)
     {
         if(prefix.empty() || p.flags().empty()) return p;
 
@@ -2180,8 +2255,9 @@ public:
 
     /** @brief prepend prefix to each flag
      */
+    template <typename Char>
     inline friend tparameter&
-    with_prefixes_short_long(
+    with_prefixes_short_long_impl(
         const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
         tparameter& p)
     {
@@ -2201,8 +2277,9 @@ public:
 
     //---------------------------------------------------------------
     /** @brief prepend suffix to each flag */
+    template <typename Char>
     inline friend tparameter&
-    with_suffix(const arg_tstring<Char>& suffix, tparameter& p)
+    with_suffix_impl(const arg_tstring<Char>& suffix, tparameter& p)
     {
         if(suffix.empty() || p.flags().empty()) return p;
 
@@ -2217,8 +2294,9 @@ public:
 
     /** @brief prepend suffix to each flag
      */
+    template <typename Char>
     inline friend tparameter&
-    with_suffixes_short_long(
+    with_suffixes_short_long_impl(
         const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
         tparameter& p)
     {
@@ -2940,7 +3018,7 @@ public:
             context context_;
         public:
             int level() const noexcept { return level_; }
-            const child* param() const noexcept { return &(*context_.cur); }
+            const child* param() const noexcept { return context_.cur != context_.end ? &(*context_.cur) : nullptr; }
         };
 
         depth_first_traverser() = default;
@@ -3986,41 +4064,55 @@ operator ! (tparameter<Char> p) {
     return tgreedy<Char>(p);
 }
 
-
-
 /*************************************************************************//**
  *
  * @brief recursively prepends a prefix to all flags
  *
  *****************************************************************************/
 template<typename Char>
-inline tparameter<Char>&&
-twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>&& p) {
-    return std::move(twith_prefix<Char>(prefix, std::forward<tparameter<Char>>(p)));
+inline tparameter<Char>&
+twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>& p) {
+    return with_prefix_impl<Char>(prefix, p);
 }
 
+template<typename Char>
+inline tparameter<Char>&
+twith_prefix(const arg_tstring<Char>& prefix, tparameter<Char>&& p) {
+    with_prefix_impl<Char>(prefix, p);
+    return std::move(p);
+}
 
 //-------------------------------------------------------------------
 template<typename Char>
 inline tgroup<Char>&
-twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>& g)
+twith_prefix_impl(const arg_tstring<Char>& prefix, tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_prefix<Char>(prefix, p.as_group());
+            twith_prefix_impl<Char>(prefix, p.as_group()); // RECURSION !!!
         } else {
-            twith_prefix<Char>(prefix, p.as_param());
+            with_prefix_impl<Char>(prefix, p.as_param());
         }
     }
     return g;
 }
 
+template<typename Char>
+inline tgroup<Char>&&
+twith_prefix_impl(const arg_tstring<Char>& prefix, tgroup<Char>&& g)
+{
+    twith_prefix_impl<Char>(prefix, g);
+    return std::move(g);
+}
+
+
+#if 0
 
 template<typename Char>
 inline tgroup<Char>&&
-twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>&& params)
+twith_prefix(const arg_tstring<Char>& prefix, tgroup<Char>&& g)
 {
-    return std::move(twith_prefix(prefix, params));
+    return std::move(twith_prefix_impl(prefix, g));
 }
 
 
@@ -4028,10 +4120,9 @@ template<typename Char, class Param, class... Params>
 inline tgroup<Char>
 twith_prefix(arg_tstring<Char> prefix, Param&& param, Params&&... params)
 {
-    return twith_prefix(prefix, tgroup<Char>{std::forward<Param>(param),
+    return twith_prefix_impl(prefix, tgroup<Char>{std::forward<Param>(param),
                                       std::forward<Params>(params)...});
 }
-
 
 
 /*************************************************************************//**
@@ -4045,29 +4136,28 @@ twith_prefix(arg_tstring<Char> prefix, Param&& param, Params&&... params)
 template<typename Char>
 inline tparameter<Char>&&
 twith_prefixes_short_long(const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
-                          tparameter<Char>&& p)
+                          tparameter<Char>& p)
 {
-    return std::move(twith_prefixes_short_long(shortpfx, longpfx, std::forward<tparameter<Char>>(p)));
+    return std::move(with_prefixes_short_long_impl(shortpfx, longpfx, p));
 }
 
 
 //-------------------------------------------------------------------
 template<typename Char>
 inline tgroup<Char>&
-twith_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
-                          const arg_tstring<Char>& longFlagPrefix,
-                          tgroup<Char>& g)
+twith_prefixes_short_long_impl(const arg_tstring<Char>& shortFlagPrefix,
+                               const arg_tstring<Char>& longFlagPrefix,
+                               tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix, p.as_group());
+            twith_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix, p.as_group());  // RECURSION !!!
         } else {
-            twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix, std::forward<tparameter<Char>>(p.as_param()));
+            with_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix, p.as_param());
         }
     }
     return g;
 }
-
 
 template<typename Char>
 inline tgroup<Char>&&
@@ -4075,8 +4165,8 @@ twith_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
                           const arg_tstring<Char>& longFlagPrefix,
                           tgroup<Char>&& params)
 {
-    return std::move(twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix,
-                                               params));
+    return std::move(twith_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix,
+                                                    params));
 }
 
 
@@ -4086,11 +4176,10 @@ with_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
                          const arg_tstring<Char>& longFlagPrefix,
                          Param&& param, Params&&... params)
 {
-    return twith_prefixes_short_long(shortFlagPrefix, longFlagPrefix,
-                                     tgroup<Char>{std::forward<Param>(param),
-                                           std::forward<Params>(params)...});
+    return twith_prefixes_short_long_impl(shortFlagPrefix, longFlagPrefix,
+                                          tgroup<Char>{std::forward<Param>(param),
+                                                std::forward<Params>(params)...});
 }
-
 
 
 /*************************************************************************//**
@@ -4101,7 +4190,7 @@ with_prefixes_short_long(const arg_tstring<Char>& shortFlagPrefix,
 template<typename Char>
 inline tparameter<Char>&&
 twith_suffix(const arg_tstring<Char>& suffix, tparameter<Char>&& p) {
-    return std::move(twith_suffix(suffix, std::forward<tparameter<Char>>(p)));
+    return std::move(twith_suffix_impl(suffix, std::forward<tparameter<Char>>(p)));
 }
 
 
@@ -4112,9 +4201,9 @@ twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>& g)
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_suffix(suffix, p.as_group());
+            twith_suffix_impl(suffix, p.as_group());
         } else {
-            twith_suffix(suffix, p.as_param());
+            twith_suffix_impl(suffix, p.as_param());
         }
     }
     return g;
@@ -4125,7 +4214,7 @@ template<typename Char>
 inline tgroup<Char>&&
 twith_suffix(const arg_tstring<Char>& suffix, tgroup<Char>&& params)
 {
-    return std::move(twith_suffix(suffix, params));
+    return std::move(twith_suffix_impl(suffix, params));
 }
 
 
@@ -4133,8 +4222,8 @@ template<typename Char, class Param, class... Params>
 inline tgroup<Char>
 twith_suffix(arg_tstring<Char> suffix, Param&& param, Params&&... params)
 {
-    return twith_suffix(suffix, tgroup<Char>{std::forward<Param>(param),
-                                      std::forward<Params>(params)...});
+    return twith_suffix_impl(suffix, tgroup<Char>{std::forward<Param>(param),
+                             std::forward<Params>(params)...});
 }
 
 
@@ -4152,7 +4241,7 @@ inline tparameter<Char>&&
 twith_suffixes_short_long(const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
                           tparameter<Char>&& p)
 {
-    return std::move(twith_suffixes_short_long(shortsfx, longsfx, std::forward<tparameter<Char>>(p)));
+    return std::move(twith_suffixes_short_long_impl(shortsfx, longsfx, std::forward<tparameter<Char>>(p)));
 }
 
 
@@ -4165,9 +4254,9 @@ twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
 {
     for(auto& p : g) {
         if(p.is_group()) {
-            twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_group());
+            twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix, p.as_group());
         } else {
-            twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix, p.as_param());
+            twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix, p.as_param());
         }
     }
     return g;
@@ -4180,8 +4269,7 @@ twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
                           const arg_tstring<Char>& longFlagSuffix,
                           tgroup<Char>&& params)
 {
-    return std::move(twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix,
-                                               params));
+    return std::move(twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix, params));
 }
 
 
@@ -4191,17 +4279,12 @@ twith_suffixes_short_long(const arg_tstring<Char>& shortFlagSuffix,
                           const arg_tstring<Char>& longFlagSuffix,
                           Param&& param, Params&&... params)
 {
-    return twith_suffixes_short_long(shortFlagSuffix, longFlagSuffix,
-                                     tgroup<Char>{std::forward<Param>(param),
-                                           std::forward<Params>(params)...});
+    return twith_suffixes_short_long_impl(shortFlagSuffix, longFlagSuffix,
+                                          tgroup<Char>{std::forward<Param>(param),
+                                                std::forward<Params>(params)...});
 }
 
-
-
-
-
-
-
+#endif // #if 0
 
 /*************************************************************************//**
  *
@@ -4903,7 +4986,7 @@ private:
     template<class ParamSelector>
     bool try_match_full(const arg_tstring<Char>& arg, const ParamSelector& select)
     {
-        auto match = detail::full_match(pos_, arg, select);
+        auto match = detail::full_match<Char>(pos_, arg, select);
         if(!match) return false;
         add_match(match);
         return true;
@@ -4919,7 +5002,7 @@ private:
     bool try_match_joined_sequence(arg_tstring<Char> arg,
                                    const ParamSelector& acceptFirst)
     {
-        auto fstMatch = detail::longest_prefix_match(pos_, arg, acceptFirst);
+        auto fstMatch = detail::longest_prefix_match<Char>(pos_, arg, acceptFirst);
 
         if(!fstMatch) return false;
 
@@ -6080,7 +6163,7 @@ private:
     template<class Iter>
     bool only_whitespace(Iter first, Iter last) const {
         return last == std::find_if_not(first, last,
-                [](char_type c) { return std::isspace(c); });
+                [](char_type c) { return detail::is_space(c); });
     }
 
     /** @brief write any object */
@@ -6136,7 +6219,7 @@ private:
         if(at_begin_of_line()) {
             //discard whitespace, it we start a new line
             first = std::find_if(first, last,
-                        [](char_type c) { return !std::isspace(c); });
+                        [](char_type c) { return !detail::is_space(c); });
             if(first == last) return;
         }
 
@@ -6145,12 +6228,12 @@ private:
         //if text to be printed is too long for one line -> wrap
         if(n > m) {
             //break before word, if break is mid-word
-            auto breakat = first + m;
-            while(breakat > first && !std::isspace(*breakat)) --breakat;
+            auto  breakat{first + m};
+            while(breakat > first && !detail::is_space(*breakat)) --breakat;
             //could not find whitespace before word -> try after the word
-            if(!std::isspace(*breakat) && breakat == first) {
+            if(!detail::is_space(*breakat) && breakat == first) {
                 breakat = std::find_if(first+m, last,
-                          [](char_type c) { return std::isspace(c); });
+                          [](char_type c) { return detail::is_space(c); });
             }
             if(breakat > first) {
                 if(curCol_ < 1) ++totalNonBlankLines_;
@@ -7412,18 +7495,19 @@ any(Filter&& filter, Targets&&... tgts)
     return tany<char, Filter, Targets...>(std::forward<Filter>(filter), std::forward<Targets>(tgts)...);
 }
 
-inline parameter&&
-with_prefix(const arg_string& prefix, parameter&& p)
+inline tgroup<char>&
+with_prefix(const arg_string& prefix, tgroup<char>& g)
 {
-    return std::move(twith_prefix<char>(prefix, std::forward<parameter>(p)));
+    return twith_prefix_impl<char>(prefix, g);
 }
 
-inline group&
-with_prefix(const arg_string& prefix, group& g)
+inline tgroup<char>&&
+with_prefix(const arg_string& prefix, tgroup<char>&& g)
 {
-    return twith_prefix<char>(prefix, g);
+    return std::move(twith_prefix_impl<char>(prefix, g));
 }
 
+#if 0
 inline group&&
 with_prefix(const arg_string& prefix, group&& params)
 {
@@ -7437,11 +7521,10 @@ with_prefix(const arg_string& prefix, Param&& param, Params&&... params)
     return twith_prefix<char, Param, Params...>(prefix, std::forward<Param>(param), std::forward<Params>(params)...);
 }
 
-inline parameter&&
-with_prefixes_short_long(const arg_string& shortpfx, const arg_string& longpfx,
-                         parameter&& p)
+inline parameter&
+with_prefixes_short_long(const arg_string& shortpfx, const arg_string& longpfx, parameter& p)
 {
-    return std::move(twith_prefixes_short_long<char>(shortpfx, longpfx, std::forward<parameter>(p)));
+    return twith_prefixes_short_long_impl<char>(shortpfx, longpfx, p);
 }
 
 inline group&
@@ -7449,7 +7532,7 @@ with_prefixes_short_long(const arg_string& shortFlagPrefix,
                          const arg_string& longFlagPrefix,
                          group& g)
 {
-    return twith_prefixes_short_long<char>(shortFlagPrefix, longFlagPrefix, g);
+    return twith_prefixes_short_long_impl<char>(shortFlagPrefix, longFlagPrefix, g);
 }
 
 inline group&&
@@ -7535,6 +7618,8 @@ with_suffixes_short_long(const arg_string& shortFlagSuffix,
                                                              std::forward<Param>(param),
                                                              std::forward<Params>(params)...);
 }
+
+#endif // #if 0
 
 namespace detail {
 

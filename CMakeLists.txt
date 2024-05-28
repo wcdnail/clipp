@@ -37,7 +37,13 @@ install(FILES ${CONFIG_VERSION_FILE}
 )
 
 option(BUILD_TESTING "Do not build tests by default" OFF)
+option(BUILD_TESTING_SINGLE "Build all test as single project" ON)
+option(BUILD_EXAMPLES "Do not build examples by default" OFF)
+option(BUILD_EXAMPLES_SINGLE "Build all examples as single project" ON)
 include(CTest)
 if(BUILD_TESTING AND ${CMAKE_SOURCE_DIR} STREQUAL ${PROJECT_SOURCE_DIR})
   add_subdirectory(test)
+endif()
+if(BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif()

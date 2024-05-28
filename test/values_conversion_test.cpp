@@ -12,6 +12,9 @@
 
 #include "testing.h"
 
+namespace {
+
+
 //-------------------------------------------------------------------
 #if defined(_MSC_VER)
 #if _MSC_VER < 1800
@@ -127,9 +130,10 @@ struct test_clamp<T,Wide,false> {
     static void in(int) {}
 };
 
+} // namespace
 
 //-------------------------------------------------------------------
-int main()
+int TEST_MAIN()
 {
     try {
 
@@ -194,4 +198,5 @@ int main()
         std::cerr << e.what() << std::endl;
         return 1;
     }
+    return 0;
  }
