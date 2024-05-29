@@ -51,6 +51,10 @@
 #  define _CXX_STD __cplusplus
 #endif
 
+#define __STRNGZ(S) #S
+#define _STRNGZ(S) __STRNGZ(S)
+#pragma message("C++ std == " _STRNGZ(_CXX_STD))
+
 /*************************************************************************//**
  *
  * @brief primary namespace
@@ -2252,7 +2256,6 @@ public:
 
     //---------------------------------------------------------------
     /** @brief prepend prefix to each flag */
-    template <typename Char>
     inline friend tparameter&
     with_prefix_impl(const arg_tstring<Char>& prefix, tparameter& p)
     {
@@ -2267,7 +2270,6 @@ public:
 
     /** @brief prepend prefix to each flag
      */
-    template <typename Char>
     inline friend tparameter&
     with_prefixes_short_long_impl(
         const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
@@ -2289,7 +2291,6 @@ public:
 
     //---------------------------------------------------------------
     /** @brief prepend suffix to each flag */
-    template <typename Char>
     inline friend tparameter&
     with_suffix_impl(const arg_tstring<Char>& suffix, tparameter& p)
     {
@@ -2306,7 +2307,6 @@ public:
 
     /** @brief prepend suffix to each flag
      */
-    template <typename Char>
     inline friend tparameter&
     with_suffixes_short_long_impl(
         const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
@@ -2773,7 +2773,7 @@ tany_other(Targets&&... tgts)
  * @brief makes catch-all value parameter with custom filter
  *
  *****************************************************************************/
-template<typename Char, class Filter, class... Targets, typename Enabled = IsStrCallable<Char, Filter>>
+template<typename Char, class Filter, class... Targets, typename Enabled = OverloadEnabled<Filter, Char>>
 inline tparameter<Char>
 tany(Filter&& filter, Targets&&... tgts)
 {
