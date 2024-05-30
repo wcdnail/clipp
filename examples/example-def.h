@@ -12,6 +12,8 @@
 
 #ifdef ALL_EXAMPLES_AS_SINGLE_PRJ
 
+// clang warnings if no fn proto defined
+
 int actions_main(int argc, char* argv[]);
 int align_main(int argc, char* argv[]);
 int alternatives_main(int argc, char* argv[]);

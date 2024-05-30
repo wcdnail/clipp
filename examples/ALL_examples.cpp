@@ -3,6 +3,8 @@
 
 #ifdef ALL_EXAMPLES_AS_SINGLE_PRJ
 
+// #TODO: append test cases
+
 int main(int argc, char* argv[])
 {
     RUN_EXAMPLE_AV(actions_main, argc, argv);
