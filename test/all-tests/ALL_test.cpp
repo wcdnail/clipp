@@ -1,5 +1,5 @@
-#include "pch.h"
-#include "testing.h"
+#include "../pch.h"
+#include "../testing.h"
 
 #define __STRNGZ(S) #S
 #define _STRNGZ(S) __STRNGZ(S)
