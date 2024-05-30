@@ -292,6 +292,9 @@ for ip in incpaths:
 
 
 for source in sources:
+    if source == 'ALL_test.cpp':
+        continue
+
     if onwindows: source = source.replace("/", "\\")
 
     res1 = testrxp.match(source)
