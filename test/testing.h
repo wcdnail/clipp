@@ -13,19 +13,18 @@
 #include <type_traits>
 #include <limits>
 
-#define __STRNGZ(S) #S
-#define _STRNGZ(S) __STRNGZ(S)
-
 #define __STR_CAT(A, B) A##B
 #define _STR_CAT(A, B)  __STR_CAT(A, B)
+
+#ifndef THIS_TEST_FNAME
+#  error macro THIS_TEST_FNAME must be defined!
+#endif // !THIS_TEST_FNAME
 
 #ifdef ALL_TESTS_AS_SINGLE_PRJ
 #  define TEST_MAIN _STR_CAT(THIS_TEST_FNAME, _main)
 #else
 #  define TEST_MAIN main
 #endif
-
-//#pragma message("C++ std == " _STRNGZ(_CXX_STD))
 
 /*************************************************************************//**
  *

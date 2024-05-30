@@ -46,9 +46,9 @@
 #include <functional>
 
 #ifdef _MSVC_LANG
-#  define _CXX_STD _MSVC_LANG
+#  define CLIPP_CXX_STD _MSVC_LANG
 #else
-#  define _CXX_STD __cplusplus
+#  define CLIPP_CXX_STD __cplusplus
 #endif
 
 /*************************************************************************//**
@@ -249,7 +249,7 @@ using match_tfunction  = std::function<subrange(const arg_tstring<Char>&)>;
  *****************************************************************************/
 namespace traits {
 
-#if (_CXX_STD < 201703L)
+#if (CLIPP_CXX_STD < 201703L)
 
 /*************************************************************************//**
  *
@@ -325,7 +325,7 @@ struct is_callable<Fn,void()> :
     decltype(check_is_void_callable_without_arg<Fn>(0))
 {};
 
-#endif // #if (_CXX_STD < 201703L)
+#endif // #if (CLIPP_CXX_STD < 201703L)
 
 /*************************************************************************//**
  *
@@ -394,7 +394,7 @@ template <typename Char>
 inline constexpr bool is_space(Char ch)
 {
 #ifdef _MSC_VER
-    return std::isspace((uint8_t)ch); // ucrt ASSERT raised if char is out of 0..255 range
+    return std::isspace(static_cast<uint8_t>(ch)); // ucrt ASSERT raised if char is out of 0..255 range
 #else
     return std::isspace(ch);
 #endif
@@ -1458,7 +1458,7 @@ public:
         return *static_cast<Derived*>(this);
     }
 
-#if (_CXX_STD < 201703L)
+#if (CLIPP_CXX_STD < 201703L)
 
     //---------------------------------------------------------------
     /** @brief adds targets = either objects whose values should be
@@ -1598,9 +1598,7 @@ public:
     //---------------------------------------------------------------
     /** @brief executes all argument actions */
     void execute_actions(const arg_tstring<Char>& arg) const {
-        int i = 0;
         for(const auto& a : argActions_) {
-            ++i;
             a(arg.c_str());
         }
     }
@@ -2450,7 +2448,7 @@ toption(String&& flag, Strings&&... flags)
  *        matches any non-empty string
  *
  *****************************************************************************/
-#if (_CXX_STD < 201703L)
+#if (CLIPP_CXX_STD < 201703L)
 
 template <class T, typename Char>
 using OverloadEnabled = typename std::enable_if<
@@ -4614,7 +4612,7 @@ private:
             pos_.undo(scopes_.top());
             scopes_.pop();
         }
-    };
+    }
 
     dfs_traverser pos_;
     dfs_traverser lastMatch_;

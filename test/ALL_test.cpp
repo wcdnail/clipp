@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "testing.h"
 
+#define __STRNGZ(S) #S
+#define _STRNGZ(S) __STRNGZ(S)
+#pragma message("C++ std == " _STRNGZ(CLIPP_CXX_STD))
+
 #ifdef ALL_TESTS_AS_SINGLE_PRJ
 
 int actions_test_main();
