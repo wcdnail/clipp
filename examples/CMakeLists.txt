@@ -12,7 +12,9 @@ if (MSVC)
   )
 else()
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-      add_compile_options(-stdlib=libc++)
+      # clang version 17.0.6 failed with this option
+      # TODO: check clang version
+      #add_compile_options(-stdlib=libc++)
     else()
       add_compile_options(
         -Wlogical-op
