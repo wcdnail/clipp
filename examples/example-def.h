@@ -1,10 +1,9 @@
 #pragma once
 
-#ifndef THIS_EXAMPLE_FNAME
-#  error macro THIS_EXAMPLE_FNAME must be defined!
-#endif // !THIS_EXAMPLE_FNAME
-
 #ifdef ALL_EXAMPLES_AS_SINGLE_PRJ
+#  ifndef THIS_EXAMPLE_FNAME
+#    error macro THIS_EXAMPLE_FNAME must be defined!
+#  endif // !THIS_EXAMPLE_FNAME
 #  define EXAMPLE_MAIN _STR_CAT(THIS_EXAMPLE_FNAME, _main)
 #else
 #  define EXAMPLE_MAIN main
