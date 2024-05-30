@@ -1536,23 +1536,6 @@ public:
         return *static_cast<Derived*>(this);
     }
 
-    ///** @brief adds action that should be called in case of a match */
-    //template<class T>
-    //Derived&
-    //target(T&& t) {
-    //    call(std::forward<T>(t));
-    //    return *static_cast<Derived*>(this);
-    //}
-
-    ///** @brief adds object whose value should be set by command line arguments
-    // */
-    //template<class T>
-    //Derived&
-    //target(T& t) {
-    //    set(t);
-    //    return *static_cast<Derived*>(this);
-    //}
-
 #endif
 
     //TODO remove ugly empty param list overload
@@ -1560,7 +1543,6 @@ public:
     target() {
         return *static_cast<Derived*>(this);
     }
-
 
     //---------------------------------------------------------------
     /** @brief adds target, see member function 'target' */
