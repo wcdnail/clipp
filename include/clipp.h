@@ -2270,25 +2270,25 @@ public:
     }
 
 private:
-    template <typename Char>
-    friend inline tparameter<Char>&
-    with_prefix_impl(const arg_tstring<Char>& prefix, tparameter<Char>& p);
+    template <typename C>
+    friend inline tparameter<C>&
+    with_prefix_impl(const arg_tstring<C>& prefix, tparameter<C>& p);
 
-    template <typename Char>
-    friend inline tparameter<Char>&
+    template <typename C>
+    friend inline tparameter<C>&
     with_prefixes_short_long_impl(
-        const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
-        tparameter<Char>& p);
+        const arg_tstring<C>& shortpfx, const arg_tstring<C>& longpfx,
+        tparameter<C>& p);
 
-    template <typename Char>
-    friend inline tparameter<Char>&
-    with_suffix_impl(const arg_tstring<Char>& suffix, tparameter<Char>& p);
+    template <typename C>
+    friend inline tparameter<C>&
+    with_suffix_impl(const arg_tstring<C>& suffix, tparameter<C>& p);
 
-    template <typename Char>
-    friend inline tparameter<Char>&
+    template <typename C>
+    friend inline tparameter<C>&
     with_suffixes_short_long_impl(
-        const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
-        tparameter<Char>& p);
+        const arg_tstring<C>& shortsfx, const arg_tstring<C>& longsfx,
+        tparameter<C>& p);
 
     //---------------------------------------------------------------
     void add_flags(arg_tstring<Char> str) {
@@ -5483,7 +5483,7 @@ void sanitize_args(arg_tlist<Char>& args)
             using std::prev;
             auto& prv = *prev(i);
             auto fstDigit = std::find_if_not(prv.rbegin(), prv.rend(),
-                [](arg_tstring<Char>::value_type c){
+                [](Char c){
                     return std::isdigit(c);
                 }).base();
 
@@ -6888,7 +6888,7 @@ private:
         fos.hanging_indent(0);
         fos.paragraph_spacing(0);
         fos.ignore_newline_chars(fmt_.ignore_newline_chars());
-        print_doc<Char, OStream>(fos, cli_);
+        print_doc<OStream>(fos, cli_);
      }
 
 
@@ -6897,7 +6897,7 @@ private:
      * @brief writes full documentation text for command line parameters
      *
      *******************************************************************/
-    template<typename Char, class OStream>
+    template<class OStream>
     void print_doc(detail::formatting_ostream<Char, OStream>& os,
                    const tgroup<Char>& cli, int indentLvl = 0) const
     {
@@ -7086,7 +7086,7 @@ private:
 
 public:
     //---------------------------------------------------------------
-    using value_type     = typename section;
+    using value_type     = class section;
     using const_iterator = typename section_store::const_iterator;
     using size_type      = typename section_store::size_type;
 

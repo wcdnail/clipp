@@ -8,7 +8,8 @@
  *
  *****************************************************************************/
 
-#include "pch.h" // EXAMPLE_MAIN
+#include "pch.h"
+#include "example-def.h" // EXAMPLE_MAIN
 
 #include <iostream>
 #include <vector>

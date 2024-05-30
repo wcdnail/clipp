@@ -8,14 +8,15 @@
  *
  *****************************************************************************/
 
-#include "pch.h" // EXAMPLE_MAIN
+#include "pch.h"
+#include "example-def.h" // EXAMPLE_MAIN
+
+#include <clipp.h>
 
 #include <iostream>
 #include <vector>
 #include <cmath>
-
-#include <clipp.h>
-
+#include <cstdint>
 
 int EXAMPLE_MAIN(int argc, char* argv[])
 {

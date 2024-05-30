@@ -11,31 +11,38 @@ if (MSVC)
     -D_AMD64_
   )
 else()
-  if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    add_compile_options(-stdlib=libc++)
-  else()
-    add_compile_options(-Wlogical-op)
-    add_compile_options(-Wnoexcept)
-    add_compile_options(-Wstrict-null-sentinel)
-    add_compile_options(-Wuseless-cast)
-  endif()
-  add_compile_options(-Wall -Wextra -Wpedantic)
-  add_compile_options(-Wcast-align -Wcast-qual)
-  add_compile_options(-Wctor-dtor-privacy)
-  add_compile_options(-Wconversion -Wno-sign-conversion)
-  add_compile_options(-Wdisabled-optimization)
-  add_compile_options(-Wdouble-promotion)
-  add_compile_options(-Wformat=2)
-  add_compile_options(-Winit-self)
-  add_compile_options(-Wmissing-include-dirs)
-  add_compile_options(-Wold-style-cast)
-  add_compile_options(-Woverloaded-virtual)
-  add_compile_options(-Wredundant-decls)
-  add_compile_options(-Wshadow)
-  add_compile_options(-Wstrict-aliasing=1)
-  add_compile_options(-Wstrict-overflow=5)
-  add_compile_options(-Wswitch-default)
-  add_compile_options(-Wundef)
+    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+      add_compile_options(-stdlib=libc++)
+    else()
+      add_compile_options(
+        -Wlogical-op
+        -Wnoexcept
+        -Wstrict-null-sentinel
+        -Wuseless-cast
+      )
+    endif()
+    add_compile_options(
+      -Wall
+      -Wextra
+      -Wpedantic
+      -Wcast-align
+      -Wcast-qual
+      -Wctor-dtor-privacy
+      -Wconversion -Wno-sign-conversion
+      -Wdisabled-optimization
+      -Wdouble-promotion
+      -Wformat=2
+      -Winit-self
+      -Wmissing-include-dirs
+      -Wold-style-cast
+      -Woverloaded-virtual
+      -Wredundant-decls
+      -Wshadow
+      -Wstrict-aliasing=1
+      -Wstrict-overflow=5
+      -Wswitch-default
+      -Wundef
+    )
 endif()
 
 add_executable(ALL_examples)
@@ -56,8 +63,20 @@ endforeach()
 target_precompile_headers(ALL_examples PRIVATE
     "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.h>"
 )
+target_sources(ALL_examples PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/example-def.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/pch.h
+  ${CMAKE_SOURCE_DIR}/include/clipp.h
+  ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
+  ${CMAKE_SOURCE_DIR}/include/clipp-wide.h
+)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${source_files})
 set_target_properties(ALL_examples PROPERTIES FOLDER "Examples")
+source_group("CLIPP" FILES
+  ${CMAKE_SOURCE_DIR}/include/clipp.h
+  ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
+  ${CMAKE_SOURCE_DIR}/include/clipp-wide.h
+)
 
 #else()
 #  foreach(src IN LISTS source_files)

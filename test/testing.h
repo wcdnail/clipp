@@ -13,6 +13,9 @@
 #include <type_traits>
 #include <limits>
 
+#define __STRNGZ(S) #S
+#define _STRNGZ(S) __STRNGZ(S)
+
 #define __STR_CAT(A, B) A##B
 #define _STR_CAT(A, B)  __STR_CAT(A, B)
 
@@ -22,10 +25,7 @@
 #  define TEST_MAIN main
 #endif
 
-#define __STRNGZ(S) #S
-#define _STRNGZ(S) __STRNGZ(S)
-
-#pragma message("C++ std == " _STRNGZ(_CXX_STD))
+//#pragma message("C++ std == " _STRNGZ(_CXX_STD))
 
 /*************************************************************************//**
  *
@@ -43,13 +43,12 @@ struct test_location
 
     void debug_out(char const* message) const
     {
-#if defined(_WIN32)
         std::ostringstream stm;
         stm << file.c_str() << "(" << line << "): " << message << std::endl;
+#if defined(_WIN32)
         OutputDebugStringA(stm.str().c_str());
-#else
-        (message);
 #endif
+        std::cout << stm.str().c_str() << std::endl;
     }
 };
 
