@@ -6919,7 +6919,7 @@ private:
                 }
             }
             else { //tgroup label first then tgroup docstring
-                auto lbl = tusage_lines(cli, usgFmt_)
+                auto lbl = tusage_lines<Char>(cli, usgFmt_)
                            .ommit_outermost_group_surrounders(true).str();
 
                 str::trim<Char>(lbl);
