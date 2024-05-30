@@ -21,7 +21,7 @@ if (BUILD_TESTING_SINGLE)
     ${CMAKE_SOURCE_DIR}/include/clipp.h
     ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
     ${CMAKE_SOURCE_DIR}/include/clipp-wide.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/all-tests/ALL_test.cpp
+    ${CMAKE_SOURCE_DIR}/ALL_test.cpp
   )
   target_precompile_headers(${PROJECT_NAME} PRIVATE
       "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.h>"
