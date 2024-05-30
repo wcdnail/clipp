@@ -1,5 +1,4 @@
-#ifndef CLIPP_TESTING_H_
-#define CLIPP_TESTING_H_
+#pragma once
 
 //don't include anything else before the test subject
 #include "../include/clipp.h"
@@ -22,6 +21,11 @@
 #else
 #  define TEST_MAIN main
 #endif
+
+#define __STRNGZ(S) #S
+#define _STRNGZ(S) __STRNGZ(S)
+
+#pragma message("C++ std == " _STRNGZ(_CXX_STD))
 
 /*************************************************************************//**
  *
@@ -170,6 +174,3 @@ inline void run_test(
                                  " in line " + to_string(info.line) };
     }
 }
-
-
-#endif

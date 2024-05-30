@@ -54,7 +54,9 @@ if (BUILD_TESTING_SINGLE)
     target_sources(ALL_test PRIVATE ${src})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "-DTHIS_TEST_FNAME=${name_we}")
   endforeach()
-  target_sources(ALL_test PRIVATE 
+  target_sources(ALL_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/testing.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.py
     ${CMAKE_SOURCE_DIR}/include/clipp.h
     ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
     ${CMAKE_SOURCE_DIR}/include/clipp-wide.h
@@ -64,6 +66,11 @@ if (BUILD_TESTING_SINGLE)
   )
   source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${source_files})
   set_target_properties(ALL_test PROPERTIES FOLDER "Tests")
+  source_group("CLIPP" FILES
+    ${CMAKE_SOURCE_DIR}/include/clipp.h
+    ${CMAKE_SOURCE_DIR}/include/clipp-narrow.h
+    ${CMAKE_SOURCE_DIR}/include/clipp-wide.h
+  )
   if (WIN32)
       target_compile_definitions(ALL_test PRIVATE
           _WIN32

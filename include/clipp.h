@@ -51,10 +51,6 @@
 #  define _CXX_STD __cplusplus
 #endif
 
-#define __STRNGZ(S) #S
-#define _STRNGZ(S) __STRNGZ(S)
-#pragma message("C++ std == " _STRNGZ(_CXX_STD))
-
 /*************************************************************************//**
  *
  * @brief primary namespace
@@ -2080,8 +2076,28 @@ inline length max_length(std::size_t max)
 
 } // namespace match
 
+template <typename Char>
+class tparameter;
 
+template <typename Char>
+inline tparameter<Char>&
+with_prefix_impl(const arg_tstring<Char>& prefix, tparameter<Char>& p);
 
+template <typename Char>
+inline tparameter<Char>&
+with_prefixes_short_long_impl(
+    const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
+    tparameter<Char>& p);
+
+template <typename Char>
+inline tparameter<Char>&
+with_suffix_impl(const arg_tstring<Char>& suffix, tparameter<Char>& p);
+
+template <typename Char>
+inline tparameter<Char>&
+with_suffixes_short_long_impl(
+    const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
+    tparameter<Char>& p);
 
 
 /*************************************************************************//**
@@ -2253,83 +2269,27 @@ public:
         return matcher_;
     }
 
+private:
+    template <typename Char>
+    friend inline tparameter<Char>&
+    with_prefix_impl(const arg_tstring<Char>& prefix, tparameter<Char>& p);
 
-    //---------------------------------------------------------------
-    /** @brief prepend prefix to each flag */
-    inline friend tparameter&
-    with_prefix_impl(const arg_tstring<Char>& prefix, tparameter& p)
-    {
-        if(prefix.empty() || p.flags().empty()) return p;
-
-        for(auto& f : p.flags_) {
-            if(f.find(prefix) != 0) f.insert(0, prefix);
-        }
-        return p;
-    }
-
-
-    /** @brief prepend prefix to each flag
-     */
-    inline friend tparameter&
+    template <typename Char>
+    friend inline tparameter<Char>&
     with_prefixes_short_long_impl(
         const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
-        tparameter& p)
-    {
-        if(shortpfx.empty() && longpfx.empty()) return p;
-        if(p.flags().empty()) return p;
+        tparameter<Char>& p);
 
-        for(auto& f : p.flags_) {
-            if(f.size() == 1) {
-                if(f.find(shortpfx) != 0) f.insert(0, shortpfx);
-            } else {
-                if(f.find(longpfx) != 0) f.insert(0, longpfx);
-            }
-        }
-        return p;
-    }
+    template <typename Char>
+    friend inline tparameter<Char>&
+    with_suffix_impl(const arg_tstring<Char>& suffix, tparameter<Char>& p);
 
-
-    //---------------------------------------------------------------
-    /** @brief prepend suffix to each flag */
-    inline friend tparameter&
-    with_suffix_impl(const arg_tstring<Char>& suffix, tparameter& p)
-    {
-        if(suffix.empty() || p.flags().empty()) return p;
-
-        for(auto& f : p.flags_) {
-            if(f.find(suffix) + suffix.size() != f.size()) {
-                f.insert(f.end(), suffix.begin(), suffix.end());
-            }
-        }
-        return p;
-    }
-
-
-    /** @brief prepend suffix to each flag
-     */
-    inline friend tparameter&
+    template <typename Char>
+    friend inline tparameter<Char>&
     with_suffixes_short_long_impl(
         const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
-        tparameter& p)
-    {
-        if(shortsfx.empty() && longsfx.empty()) return p;
-        if(p.flags().empty()) return p;
+        tparameter<Char>& p);
 
-        for(auto& f : p.flags_) {
-            if(f.size() == 1) {
-                if(f.find(shortsfx) + shortsfx.size() != f.size()) {
-                    f.insert(f.end(), shortsfx.begin(), shortsfx.end());
-                }
-            } else {
-                if(f.find(longsfx) + longsfx.size() != f.size()) {
-                    f.insert(f.end(), longsfx.begin(), longsfx.end());
-                }
-            }
-        }
-        return p;
-    }
-
-private:
     //---------------------------------------------------------------
     void add_flags(arg_tstring<Char> str) {
         //empty flags are not allowed
@@ -2359,6 +2319,84 @@ private:
     bool greedy_ = false;
 };
 
+
+
+//---------------------------------------------------------------
+/** @brief prepend prefix to each flag */
+template <typename Char>
+inline tparameter<Char>&
+with_prefix_impl(const arg_tstring<Char>& prefix, tparameter<Char>& p)
+{
+    if(prefix.empty() || p.flags().empty()) return p;
+
+    for(auto& f : p.flags_) {
+        if(f.find(prefix) != 0) f.insert(0, prefix);
+    }
+    return p;
+}
+
+
+/** @brief prepend prefix to each flag */
+template <typename Char>
+inline tparameter<Char>&
+with_prefixes_short_long_impl(
+    const arg_tstring<Char>& shortpfx, const arg_tstring<Char>& longpfx,
+    tparameter<Char>& p)
+{
+    if(shortpfx.empty() && longpfx.empty()) return p;
+    if(p.flags().empty()) return p;
+
+    for(auto& f : p.flags_) {
+        if(f.size() == 1) {
+            if(f.find(shortpfx) != 0) f.insert(0, shortpfx);
+        } else {
+            if(f.find(longpfx) != 0) f.insert(0, longpfx);
+        }
+    }
+    return p;
+}
+
+
+//---------------------------------------------------------------
+/** @brief prepend suffix to each flag */
+template <typename Char>
+inline tparameter<Char>&
+with_suffix_impl(const arg_tstring<Char>& suffix, tparameter<Char>& p)
+{
+    if(suffix.empty() || p.flags().empty()) return p;
+
+    for(auto& f : p.flags_) {
+        if(f.find(suffix) + suffix.size() != f.size()) {
+            f.insert(f.end(), suffix.begin(), suffix.end());
+        }
+    }
+    return p;
+}
+
+
+/** @brief prepend suffix to each flag */
+template <typename Char>
+inline tparameter<Char>&
+with_suffixes_short_long_impl(
+    const arg_tstring<Char>& shortsfx, const arg_tstring<Char>& longsfx,
+    tparameter<Char>& p)
+{
+    if(shortsfx.empty() && longsfx.empty()) return p;
+    if(p.flags().empty()) return p;
+
+    for(auto& f : p.flags_) {
+        if(f.size() == 1) {
+            if(f.find(shortsfx) + shortsfx.size() != f.size()) {
+                f.insert(f.end(), shortsfx.begin(), shortsfx.end());
+            }
+        } else {
+            if(f.find(longsfx) + longsfx.size() != f.size()) {
+                f.insert(f.end(), longsfx.begin(), longsfx.end());
+            }
+        }
+    }
+    return p;
+}
 
 
 
