@@ -4699,7 +4699,7 @@ full_match(tscoped_dfs_traverser<Char> pos, const arg_tstring<Char>& arg,
             if(select(param)) {
                 const auto match = param.match(arg);
                 if(match && match.length() == arg.size()) {
-                    return match_t{arg, std::move(pos)};
+                    return match_t<Char>{arg, std::move(pos)};
                 }
             }
         }
@@ -5008,7 +5008,7 @@ private:
         if(pos_->is_param() && pos_->blocking() && pos_->as_param().greedy()) {
             const auto match = pos_->as_param().match(arg);
             if(match && match.length() == arg.size()) {
-                add_match(detail::match_t{arg,pos_});
+                add_match(detail::match_t<Char>{arg,pos_});
                 return true;
             }
         }
