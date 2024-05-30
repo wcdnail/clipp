@@ -39,6 +39,7 @@ struct test_location
     std::string file;
     int line;
 
+#ifdef _XTRA_FUNCTIONAL
     void debug_out(char const* message) const
     {
         std::ostringstream stm;
@@ -48,6 +49,9 @@ struct test_location
 #endif
         std::cout << stm.str().c_str() << std::endl;
     }
+#else // !_XTRA_FUNCTIONAL
+    void debug_out(char const*) const {}
+#endif
 };
 
 

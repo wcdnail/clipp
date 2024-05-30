@@ -7,6 +7,7 @@ if (BUILD_TESTING_SINGLE)
   target_compile_features(${PROJECT_NAME} PUBLIC ${CLIPP_CXX_STD})
   target_compile_definitions(${PROJECT_NAME} PRIVATE
       ALL_TESTS_AS_SINGLE_PRJ
+      _XTRA_FUNCTIONAL
   )
   foreach(src IN LISTS source_files)
     get_filename_component(name_we ${src} NAME_WE)
